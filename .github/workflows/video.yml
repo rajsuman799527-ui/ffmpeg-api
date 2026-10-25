@@ -1,0 +1,53 @@
+name: video-job
+on:
+  workflow_dispatch:
+    inputs:
+      job_id:
+        required: true
+      op:
+        description: trim or concat
+        required: true
+      urls:
+        description: video URLs separated by spaces
+        required: true
+      start:
+        default: "0"
+      duration:
+        default: ""
+permissions:
+  contents: write
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Render
+        env:
+          URLS: ${{ inputs.urls }}
+          OP: ${{ inputs.op }}
+          START: ${{ inputs.start }}
+          DURATION: ${{ inputs.duration }}
+        run: |
+          set -ef
+          n=0
+          for u in $URLS; do
+            curl -sSL -o "in$n.mp4" "$u"
+            n=$((n+1))
+          done
+          if [ "$OP" = "trim" ]; then
+            if [ -n "$DURATION" ]; then
+              ffmpeg -y -ss "$START" -i in0.mp4 -t "$DURATION" -c:v libx264 -preset veryfast -c:a aac out.mp4
+            else
+              ffmpeg -y -ss "$START" -i in0.mp4 -c:v libx264 -preset veryfast -c:a aac out.mp4
+            fi
+          else
+            : > list.txt
+            for ((k=0; k<n; k++)); do echo "file '$PWD/in$k.mp4'" >> list.txt; done
+            ffmpeg -y -f concat -safe 0 -i list.txt -c:v libx264 -preset veryfast -c:a aac out.mp4
+          fi
+      - name: Publish result
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB: ${{ inputs.job_id }}
+        run: gh release create "job-$JOB" out.mp4 --repo "$GITHUB_REPOSITORY" --title "job-$JOB" --notes "video job"

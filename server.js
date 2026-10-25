@@ -10,6 +10,7 @@ const { Readable } = require('stream');
 const app = express();
 app.use(express.json({ limit: '2mb' }));
 
+const VERSION = 'tts-v1';
 const PORT = process.env.PORT || 3000;
 const API_KEY = process.env.API_KEY;
 const CF_ACCOUNT_ID = process.env.CF_ACCOUNT_ID;
@@ -83,7 +84,15 @@ setInterval(async () => {
 
 // ---------- public routes ----------
 app.get('/', (req, res) => res.send('ok'));
-app.use('/files', express.static(OUT_DIR));
+app.get('/version', (req, res) => res.json({ ok: true, version: VERSION, tts: true }));
+app.use(
+  '/files',
+  (req, res, next) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    next();
+  },
+  express.static(OUT_DIR)
+);
 
 // ---------- auth ----------
 app.use((req, res, next) => {
@@ -227,7 +236,7 @@ app.post('/silence-cut', handler(async (req) => {
     await fsp.writeFile(vf, `select='${expr}',setpts=N/FRAME_RATE/TB`);
     await fsp.writeFile(af, `aselect='${expr}',asetpts=N/SR/TB`);
     const name = id() + '.mp4';
-        await run('ffmpeg', ['-y', '-i', input, '-filter_script:v', vf, '-filter_script:a', af,
+    await run('ffmpeg', ['-y', '-i', input, '-filter_script:v', vf, '-filter_script:a', af,
       '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-c:a', 'aac',
       path.join(OUT_DIR, name)]);
     return { url: `${baseUrl(req)}/files/${name}`, original_seconds: total, kept_segments: segs.length };
@@ -250,21 +259,31 @@ app.post('/frame', handler(async (req) => {
 // ---------- /tts (free Edge voices) ----------
 app.post('/tts', handler(async (req) => {
   const { text, voice = 'hi-IN-SwaraNeural' } = req.body;
-  if (!text || !text.trim()) throw new Error('text required');
-  if (text.length > 5000) throw new Error('text too long (max 5000 characters)');
+  if (!text || !String(text).trim()) throw new Error('text required');
+  if (String(text).length > 5000) throw new Error('text too long (max 5000 characters)');
   if (!/^[a-z]{2,3}-[A-Z]{2}-[A-Za-z]+Neural$/.test(voice)) throw new Error('invalid voice');
-  const safe = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const { MsEdgeTTS, OUTPUT_FORMAT } = await import('msedge-tts');
+  const safe = String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  let lib;
+  try {
+    lib = await import('msedge-tts');
+  } catch (e) {
+    throw new Error('msedge-tts package is not installed on the server');
+  }
+  const { MsEdgeTTS, OUTPUT_FORMAT } = lib;
   const tts = new MsEdgeTTS();
   await tts.setMetadata(voice, OUTPUT_FORMAT.WEBM_24KHZ_16BIT_MONO_OPUS);
   const { audioStream } = tts.toStream(safe);
+
   const chunks = [];
   await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Voice generation timed out')), 60000);
     audioStream.on('data', (d) => chunks.push(d));
-    audioStream.on('error', reject);
-    audioStream.on('close', resolve);
+    audioStream.on('error', (e) => { clearTimeout(timer); reject(e); });
+    audioStream.on('close', () => { clearTimeout(timer); resolve(); });
   });
   if (!chunks.length) throw new Error('Voice generation failed, try again');
+
   const raw = path.join(TMP_DIR, id() + '.webm');
   await fsp.writeFile(raw, Buffer.concat(chunks));
   const name = id() + '.mp3';
@@ -274,4 +293,4 @@ app.post('/tts', handler(async (req) => {
   return { url: `${baseUrl(req)}/files/${name}` };
 }));
 
-app.listen(PORT, () => console.log('FFmpeg API running on', PORT));
+app.listen(PORT, () => console.log('FFmpeg API running on', PORT, VERSION));

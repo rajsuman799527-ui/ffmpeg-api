@@ -1,53 +1,98 @@
-name: video-job
+name: video
+# The run name contains the job id so the app can find this run (it looks for it by name).
+run-name: "video ${{ inputs.job_id }}"
+
 on:
   workflow_dispatch:
     inputs:
       job_id:
+        description: "Job id from the app"
         required: true
+        type: string
       op:
-        description: trim or concat
+        description: "trim or concat"
         required: true
+        type: choice
+        options: [trim, concat]
       urls:
-        description: video URLs separated by spaces
+        description: "Clip links, separated by spaces"
         required: true
+        type: string
       start:
+        description: "Trim start in seconds"
+        required: false
         default: "0"
+        type: string
       duration:
+        description: "Trim length in seconds"
+        required: false
         default: ""
+        type: string
+
 permissions:
   contents: write
+
 jobs:
   render:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Install ffmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
-      - name: Render
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+
+      - name: Render the video
         env:
-          URLS: ${{ inputs.urls }}
+          JOB_ID: ${{ inputs.job_id }}
           OP: ${{ inputs.op }}
+          URLS: ${{ inputs.urls }}
           START: ${{ inputs.start }}
           DURATION: ${{ inputs.duration }}
         run: |
-          set -ef
-          n=0
-          for u in $URLS; do
-            curl -sSL -o "in$n.mp4" "$u"
-            n=$((n+1))
-          done
+          set -euo pipefail
+          [[ "$JOB_ID" =~ ^[A-Za-z0-9_-]+$ ]] || { echo "bad job id"; exit 1; }
+          num='^[0-9]+([.][0-9]+)?$'
+          [[ "$START" =~ $num ]] || START=0
+          read -r -a LIST <<< "$URLS"
+          for u in "${LIST[@]}"; do [[ "$u" =~ ^https?:// ]] || { echo "bad link"; exit 1; }; done
+
+          VF="scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30"
+          ENC=(-c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p)
+
           if [ "$OP" = "trim" ]; then
-            if [ -n "$DURATION" ]; then
-              ffmpeg -y -ss "$START" -i in0.mp4 -t "$DURATION" -c:v libx264 -preset veryfast -c:a aac out.mp4
-            else
-              ffmpeg -y -ss "$START" -i in0.mp4 -c:v libx264 -preset veryfast -c:a aac out.mp4
-            fi
+            curl -fsSL --retry 3 -o in.mp4 "${LIST[0]}"
+            T=()
+            if [[ "$DURATION" =~ $num ]]; then T=(-t "$DURATION"); fi
+            ffmpeg -y -nostdin -hide_banner -loglevel error -ss "$START" -i in.mp4 "${T[@]}" \
+              -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" "${ENC[@]}" -c:a aac -b:a 128k -movflags +faststart out.mp4
           else
+            [ "${#LIST[@]}" -ge 2 ] || { echo "need at least 2 clips"; exit 1; }
             : > list.txt
-            for ((k=0; k<n; k++)); do echo "file '$PWD/in$k.mp4'" >> list.txt; done
-            ffmpeg -y -f concat -safe 0 -i list.txt -c:v libx264 -preset veryfast -c:a aac out.mp4
+            i=0
+            for u in "${LIST[@]}"; do
+              curl -fsSL --retry 3 -o "raw$i.mp4" "$u"
+              if [ -n "$(ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "raw$i.mp4")" ]; then
+                ffmpeg -y -nostdin -hide_banner -loglevel error -i "raw$i.mp4" -vf "$VF" "${ENC[@]}" -c:a aac -ar 44100 -ac 2 "norm$i.mp4"
+              else
+                ffmpeg -y -nostdin -hide_banner -loglevel error -i "raw$i.mp4" -f lavfi -i anullsrc=r=44100:cl=stereo \
+                  -map 0:v:0 -map 1:a:0 -shortest -vf "$VF" "${ENC[@]}" -c:a aac "norm$i.mp4"
+              fi
+              rm -f "raw$i.mp4"
+              echo "file 'norm$i.mp4'" >> list.txt
+              i=$((i+1))
+            done
+            ffmpeg -y -nostdin -hide_banner -loglevel error -f concat -safe 0 -i list.txt -c copy -movflags +faststart out.mp4
           fi
-      - name: Publish result
+          ls -la out.mp4
+
+      - name: Publish as a release
         env:
           GH_TOKEN: ${{ github.token }}
-          JOB: ${{ inputs.job_id }}
-        run: gh release create "job-$JOB" out.mp4 --repo "$GITHUB_REPOSITORY" --title "job-$JOB" --notes "video job"
+          JOB_ID: ${{ inputs.job_id }}
+        run: |
+          set -euo pipefail
+          gh release create "job-$JOB_ID" out.mp4 --repo "$GITHUB_REPOSITORY" \
+            --title "job-$JOB_ID" --notes "Rendered by the YouTube Studio AI app. Safe to delete after saving."
+          # keep the repo tidy: remove job releases older than the newest 30
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 200 --json tagName,createdAt \
+            --jq '[.[] | select(.tagName | startswith("job-"))] | sort_by(.createdAt) | reverse | .[30:] | .[].tagName' \
+            | while read -r tag; do gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true; done

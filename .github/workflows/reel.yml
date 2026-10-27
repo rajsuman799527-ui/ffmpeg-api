@@ -23,6 +23,11 @@ on:
         required: false
         default: ""
         type: string
+      stills:
+        description: "Preview only: comma separated seconds to render as PNG frames"
+        required: false
+        default: ""
+        type: string
       cutout_url:
         description: "Optional link to the speaker cutout"
         required: false
@@ -73,10 +78,11 @@ jobs:
           VIDEO_URL: ${{ inputs.video_url }}
           AUDIO_URL: ${{ inputs.audio_url }}
           CUTOUT_URL: ${{ inputs.cutout_url }}
+          STILLS: ${{ inputs.stills }}
         run: |
           set -euo pipefail
           node render.mjs
-          ls -la ../out.mp4
+          if [ -z "$STILLS" ]; then ls -la ../out.mp4; fi
 
       - name: Publish as a release
         env:
@@ -84,5 +90,6 @@ jobs:
           JOB_ID: ${{ inputs.job_id }}
         run: |
           set -euo pipefail
-          gh release create "job-$JOB_ID" out.mp4 --repo "$GITHUB_REPOSITORY" \
+          if [ -n "${{ inputs.stills }}" ]; then FILES=(stills/*.png); else FILES=(out.mp4); fi
+          gh release create "job-$JOB_ID" "${FILES[@]}" --repo "$GITHUB_REPOSITORY" \
             --title "job-$JOB_ID" --notes "Rendered by Reel Studio. Safe to delete after saving."

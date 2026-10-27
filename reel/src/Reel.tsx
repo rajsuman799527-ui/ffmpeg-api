@@ -79,9 +79,10 @@ export const Reel: React.FC<ReelProps> = ({ plan, videoFile, cutoutFile, hasSfx 
           const head = i > 0 && scenes[i - 1].transition_out !== 'cut' ? TRANS : 0;
           const f = frame - from;
           const total = end - from;
-          const op = interpolate(f, [0, head || 1, total - tail, total], [head ? 0 : 1, 1, 1, tail ? 0 : 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-          const blur = interpolate(f, [0, head || 1, total - tail, total], [head ? 10 : 0, 0, 0, tail ? 10 : 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-          const zoom = s.transition_out === 'zoom' ? interpolate(f, [total - tail, total], [1, 1.08], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }) : 1;
+          const r0 = 0, r1 = Math.max(1, head), r2 = Math.max(r1 + 1, total - tail), r3 = Math.max(r2 + 1, total); // strictly increasing input range
+          const op = interpolate(f, [r0, r1, r2, r3], [head ? 0 : 1, 1, 1, tail ? 0 : 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+          const blur = interpolate(f, [r0, r1, r2, r3], [head ? 10 : 0, 0, 0, tail ? 10 : 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+          const zoom = s.transition_out === 'zoom' && tail > 0 ? interpolate(f, [r2, r3], [1, 1.08], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }) : 1;
           return (
             <Sequence key={i} from={from} durationInFrames={Math.max(1, end - from + tail)} layout="none">
               {frame >= from && frame < end + tail ? (

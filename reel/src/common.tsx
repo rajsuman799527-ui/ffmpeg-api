@@ -2,7 +2,7 @@ import React from 'react';
 import { Audio, Sequence, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 
 export type W = { t: string; s: number; e: number };
-export type Cap = { text: string; start: number; end: number; words?: W[]; emphasis?: number; number?: number };
+export type Cap = { text: string; start: number; end: number; words?: W[]; emphasis?: number; number?: number; visual?: string };
 export type Plan = {
   video: { width: number; height: number; fps: number };
   style: Record<string, string>;

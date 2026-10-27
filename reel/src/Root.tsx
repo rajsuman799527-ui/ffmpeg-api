@@ -1,6 +1,7 @@
 import React from 'react';
 import { Composition } from 'remotion';
-import { Reel, ReelProps } from './Reel';
+import { Reel, type ReelProps } from './Reel';
+import { buildTimeline } from './timeline';
 
 const FPS = 30;
 export const Root: React.FC = () => (
@@ -14,8 +15,10 @@ export const Root: React.FC = () => (
     defaultProps={{ plan: { video: { width: 720, height: 1280, fps: 30 }, style: {}, cuts: [], scenes: [], captions: [] }, videoUrl: '', cutoutUrl: '' } as unknown as Record<string, unknown>}
     calculateMetadata={({ props }) => {
       const p = (props as unknown as ReelProps).plan;
-      const last = Math.max(1, ...p.scenes.map((s) => s.end), ...p.captions.map((c) => c.end));
-      return { durationInFrames: Math.ceil(last * FPS) };
+      const lastEnd = Math.max(0, ...p.scenes.map((s) => Number(s.end) || 0), ...p.captions.map((c) => Number(c.end) || 0));
+      const plan = { ...p, duration: Number(p.duration) || lastEnd || 1 };
+      const tl = buildTimeline(plan, FPS);
+      return { durationInFrames: Math.max(30, tl.totalFrames) };
     }}
   />
 );

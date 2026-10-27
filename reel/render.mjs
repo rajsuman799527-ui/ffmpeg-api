@@ -24,7 +24,7 @@ await renderMedia({
   outputLocation: path.join(here, '..', 'out.mp4'),
   inputProps,
   crf: 22,
-  concurrency: 2,
+  concurrency: 4,
   onProgress: ({ progress }) => { if (Math.round(progress * 100) % 10 === 0) console.log('progress', Math.round(progress * 100)); },
 });
 console.log('done');

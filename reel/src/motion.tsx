@@ -186,12 +186,12 @@ export const SlabWipe: React.FC<{ plan: Plan; color: string; color2?: string }> 
   const { frame, fps, idx } = useCaps(plan);
   if (idx <= 0) return null;
   const since = frame - Math.round(plan.captions[idx].start * fps) + 4;
-  if (since < 0 || since > 16) return null;
-  const k = since / 16;
+  if (since < 0 || since > 12) return null;
+  const k = since / 12;
   const x = interpolate(k, [0, 1], [-130, 130], { easing: Easing.inOut(Easing.cubic) });
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-      <div style={{ position: 'absolute', top: -300, bottom: -300, width: '42%', left: '29%', transform: `translateX(${x}%) skewX(-16deg)`, background: `linear-gradient(90deg, ${color2 ?? color}, ${color}, ${color2 ?? color})`, opacity: 0.6, filter: 'blur(3px)' }} />
+      <div style={{ position: 'absolute', top: -300, bottom: -300, width: '42%', left: '29%', transform: `translateX(${x}%) skewX(-16deg)`, background: `linear-gradient(90deg, ${color2 ?? color}, ${color}, ${color2 ?? color})`, opacity: 0.5, filter: 'blur(3px)' }} />
     </div>
   );
 };

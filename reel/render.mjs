@@ -17,7 +17,9 @@ const last = Math.max(1, ...plan.scenes.map((s) => s.end), ...plan.captions.map(
 console.log('plan ok: template', plan.template || 'yellow_pop', 'mode', plan.mode || 'video', 'captions', plan.captions.length, 'seconds', last);
 
 // music + sound effects (synthesized, royalty free)
-const track = (plan.music && plan.music.track) || '';
+const TPL_MUSIC = { crimson: 'cinema', noir: 'cinema', neon: 'neon', mono: 'warm', lime: 'warm', finance: 'neon', hud: 'cinema', money: 'cinema' };
+const tplId = plan.template && TPL_MUSIC[plan.template] ? plan.template : 'studio';
+const track = plan.music === null ? '' : ((plan.music && plan.music.track) || TPL_MUSIC[tplId] || 'warm');
 const g = spawnSync('node', ['gen-audio.mjs', 'public', String(Math.ceil(last + 4)), track || 'none'], { cwd: here, stdio: 'inherit' });
 if (g.status !== 0) { console.error('audio generation failed'); process.exit(1); }
 
@@ -37,7 +39,7 @@ if (STILLS) {
 await renderMedia({
   composition, serveUrl, codec: 'h264',
   outputLocation: path.join(here, '..', 'out.mp4'),
-  inputProps, crf: 22, concurrency: 2,
+  inputProps, crf: 23, concurrency: 4, x264Preset: 'veryfast', jpegQuality: 88, timeoutInMilliseconds: 180000,
   onProgress: ({ progress }) => { const p = Math.round(progress * 100); if (p % 10 === 0) console.log('progress', p); },
 });
 console.log('done');

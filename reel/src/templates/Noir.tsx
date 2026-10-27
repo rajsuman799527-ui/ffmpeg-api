@@ -15,7 +15,7 @@ export const Noir: React.FC<TplProps> = ({ plan, overVideo }) => {
   const emphI = cap?.emphasis ?? -1;
   const big = emphI >= 0 ? words[emphI] : words[words.length - 1];
   const small = words.filter((w) => w !== big);
-  const bigSize = big ? Math.max(70, Math.min(158, Math.floor(600 / (big.t.length * 0.6)))) : 120;
+  const bigSize = big ? Math.max(70, Math.min(150, Math.floor(600 / (big.t.length * 0.8)))) : 120;
   const capF = cap ? Math.round(cap.start * fps) : 0;
   const since = frame - capF;
   const discIn = spring({ frame: since, fps, config: { damping: 14, stiffness: 90, mass: 0.9 } });

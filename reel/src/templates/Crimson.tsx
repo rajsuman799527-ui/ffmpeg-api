@@ -55,29 +55,34 @@ export const Crimson: React.FC<TplProps> = ({ plan, overVideo }) => {
 
         {/* 3D glass card with the visual */}
         {cap && (
-          <div style={{ position: 'absolute', inset: 0, opacity: exit, transform: `scale(${0.6 + 0.4 * cardIn})`, transformOrigin: '50% 34%', filter: `blur(${(1 - clamp01(cardIn)) * 12}px)` }}>
+          <div style={{ position: 'absolute', inset: 0, opacity: exit, transform: `scale(${0.6 + 0.4 * cardIn})`, transformOrigin: '50% 37%', filter: `blur(${(1 - clamp01(cardIn)) * 12}px)` }}>
             {vis === 'chart_up' || vis === 'chart_down' ? (
-              <Glass3D x={360} y={400} w={520} h={400} radius={56} rot={[-10, 6]} tint="rgba(255,255,255,0.18)">
+              <Glass3D x={360} y={470} w={540} h={420} radius={56} rot={[-10, 6]} tint="rgba(255,255,255,0.18)">
                 <div style={{ position: 'absolute', left: 30, top: 24, color: '#fff', fontSize: 24, fontWeight: 600, opacity: 0.85 }}>{vis === 'chart_up' ? 'Growth' : 'Drop'}</div>
                 <div style={{ position: 'absolute', left: 30, right: 30, top: 80, bottom: 30 }}><LineChart w={460} h={280} progress={draw} color={vis === 'chart_up' ? '#ffffff' : '#ffb4b4'} seed={idx + 2} down={vis === 'chart_down'} /></div>
               </Glass3D>
             ) : cap.number != null ? (
-              <Glass3D x={360} y={400} w={480} h={340} radius={56} rot={[-8, 5]} tint="rgba(255,255,255,0.18)">
+              <Glass3D x={360} y={470} w={500} h={360} radius={56} rot={[-8, 5]} tint="rgba(255,255,255,0.18)">
                 <div style={{ color: '#fff', fontSize: 150, fontWeight: 800, textShadow: '0 0 40px rgba(255,255,255,0.4)' }}>{Math.round(interpolate(draw, [0, 1], [0, cap.number])).toLocaleString('en-IN')}</div>
               </Glass3D>
             ) : vis ? (
-              <Glass3D x={360} y={400} w={380} h={380} radius={92} rot={[-12, 8]} tint="rgba(255,255,255,0.2)">
-                <StrokeIcon id={vis} size={210} color="#fff" width={1.5} progress={draw} glow="rgba(255,255,255,0.8)" />
+              <Glass3D x={360} y={470} w={420} h={420} radius={100} rot={[-12, 8]} tint="rgba(255,255,255,0.2)">
+                <StrokeIcon id={vis} size={230} color="#fff" width={1.5} progress={draw} glow="rgba(255,255,255,0.8)" />
               </Glass3D>
             ) : (
-              <OrbitRings x={360} y={400} size={420} color="rgba(255,255,255,0.55)" accent="#fff" />
+              <OrbitRings x={360} y={470} size={460} color="rgba(255,255,255,0.55)" accent="#fff" />
             )}
           </div>
         )}
 
         {/* kinetic text */}
         {cap && (
-          <div style={{ position: 'absolute', left: 54, right: 54, top: 730, opacity: exit, filter: `blur(${(1 - exit) * 12}px)` }}>
+          <div style={{ position: 'absolute', left: 54, top: 758, display: 'flex', alignItems: 'center', gap: 14, opacity: exit * 0.85, color: '#fff', fontSize: 22, fontWeight: 600, letterSpacing: 4 }}>
+            <span>{String(idx + 1).padStart(2, '0')}</span><span style={{ width: 70 * prog(since, 0, 14), height: 2, background: 'rgba(255,255,255,0.8)' }} />
+          </div>
+        )}
+        {cap && (
+          <div style={{ position: 'absolute', left: 54, right: 54, top: 800, opacity: exit, filter: `blur(${(1 - exit) * 12}px)` }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 22px', justifyContent: 'center', alignItems: 'center' }}>
               {words.map((w, i) => {
                 const emph = cap.emphasis === i;
@@ -87,7 +92,7 @@ export const Crimson: React.FC<TplProps> = ({ plan, overVideo }) => {
                   const click = interpolate(frame - Math.round((w.s + 0.45) * fps), [0, 12], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
                   return (
                     <div key={i} style={{ position: 'relative', opacity: p, transform: `scale(${(0.72 + 0.28 * p) * (click > 0 && click < 0.5 ? 0.96 : 1)}) translateY(${(1 - p) * 30}px)` }}>
-                      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(180deg,#fff 0%,#f1d3d5 55%,#d9a9ad 100%)', color: '#220608', borderRadius: 26, padding: '8px 34px 12px', fontSize: 64, fontWeight: 700, boxShadow: '0 18px 46px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.5), inset 0 -5px 12px rgba(150,0,20,0.28)' }}>
+                      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(180deg,#fff 0%,#f1d3d5 55%,#d9a9ad 100%)', color: '#220608', borderRadius: 26, padding: '8px 34px 12px', fontSize: 72, fontWeight: 700, boxShadow: '0 18px 46px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.5), inset 0 -5px 12px rgba(150,0,20,0.28)' }}>
                         {w.t}
                         <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: '46%', background: 'linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0))' }} />
                       </div>
@@ -97,7 +102,7 @@ export const Crimson: React.FC<TplProps> = ({ plan, overVideo }) => {
                   );
                 }
                 return (
-                  <span key={i} style={{ display: 'inline-block', fontSize: 70, lineHeight: 1.12, fontWeight: 600, fontStyle: odd ? 'italic' : 'normal', fontFamily: odd ? F.poppinsItalic : F.poppins, color: '#fff', textShadow: '0 4px 26px rgba(0,0,0,0.5)', transform: `translateY(${odd ? 26 : 0}px)` }}>
+                  <span key={i} style={{ display: 'inline-block', fontSize: 80, lineHeight: 1.12, fontWeight: 600, fontStyle: odd ? 'italic' : 'normal', fontFamily: odd ? F.poppinsItalic : F.poppins, color: '#fff', textShadow: '0 4px 26px rgba(0,0,0,0.5)', transform: 'none' }}>
                     <Letters text={w.t} start={w.s - 0.04} frame={frame} fps={fps} fx="blur" stagger={1.4} />
                   </span>
                 );

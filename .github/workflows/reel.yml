@@ -9,17 +9,16 @@ on:
         description: "Job id from the app"
         required: true
         type: string
-      plan_b64:
-        description: "Edit plan (JSON, gzip, base64). Empty = built-in test plan"
-        required: false
-        default: ""
+      plan_url:
+        description: "Link to the edit plan (JSON)"
+        required: true
         type: string
       video_url:
-        description: "Public link to the speaker video, or the word test"
+        description: "Link to the raw speaker video"
         required: true
         type: string
       cutout_url:
-        description: "Optional link to a transparent speaker video (webm)"
+        description: "Optional link to the speaker cutout"
         required: false
         default: ""
         type: string
@@ -30,7 +29,7 @@ permissions:
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
@@ -38,53 +37,42 @@ jobs:
         with:
           node-version: 20
 
-      - name: System libraries
+      - name: Check inputs
+        env:
+          JOB_ID: ${{ inputs.job_id }}
+          PLAN_URL: ${{ inputs.plan_url }}
+          VIDEO_URL: ${{ inputs.video_url }}
+        run: |
+          set -euo pipefail
+          [[ "$JOB_ID" =~ ^[A-Za-z0-9_-]+$ ]] || { echo "bad job id"; exit 1; }
+          [[ "$PLAN_URL" =~ ^https:// ]] || { echo "bad plan link"; exit 1; }
+          [[ "$VIDEO_URL" =~ ^https:// ]] || { echo "bad video link"; exit 1; }
+
+      - name: Install system libraries for the browser and ffmpeg
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg libnss3 libdbus-1-3 libatk1.0-0 libgbm-dev libasound2t64 libxrandr2 libxkbcommon-dev libxfixes3 libxcomposite1 libxdamage1 libatk-bridge2.0-0 libpango-1.0-0 libcairo2 libcups2
+          sudo apt-get install -y -qq ffmpeg libnss3 libdbus-1-3 libatk1.0-0 libasound2t64 libxrandr2 libxkbcommon-dev libxfixes3 libxcomposite1 libxdamage1 libgbm-dev libatk-bridge2.0-0 libcups2 libpango-1.0-0 libcairo2
 
-      - name: Install renderer
+      - name: Install render tools
         working-directory: reel
         run: npm install --no-audit --no-fund
 
-      - name: Prepare inputs
+      - name: Render the reel
         working-directory: reel
         env:
-          JOB_ID: ${{ inputs.job_id }}
-          PLAN_B64: ${{ inputs.plan_b64 }}
+          PLAN_URL: ${{ inputs.plan_url }}
           VIDEO_URL: ${{ inputs.video_url }}
           CUTOUT_URL: ${{ inputs.cutout_url }}
         run: |
           set -euo pipefail
-          [[ "$JOB_ID" =~ ^[A-Za-z0-9_-]+$ ]] || { echo "bad job id"; exit 1; }
-          mkdir -p public
-          if [ "$VIDEO_URL" = "test" ]; then
-            ffmpeg -y -nostdin -hide_banner -loglevel error -f lavfi -i "testsrc2=size=720x1280:rate=30:duration=24" -f lavfi -i "sine=frequency=330:duration=24" -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest public/source.mp4
-          else
-            [[ "$VIDEO_URL" =~ ^https?:// ]] || { echo "bad video link"; exit 1; }
-            curl -fsSL --retry 3 -o public/source.mp4 "$VIDEO_URL"
-          fi
-          CUT=""
-          if [ -n "$CUTOUT_URL" ]; then
-            [[ "$CUTOUT_URL" =~ ^https?:// ]] || { echo "bad cutout link"; exit 1; }
-            curl -fsSL --retry 3 -o public/cutout.webm "$CUTOUT_URL" && CUT="cutout.webm"
-          fi
-          # sound effects (free, generated here)
-          ffmpeg -y -nostdin -hide_banner -loglevel error -f lavfi -i "sine=frequency=560:duration=0.14" -af "afade=t=out:st=0.02:d=0.12,volume=0.9" public/pop.wav
-          ffmpeg -y -nostdin -hide_banner -loglevel error -f lavfi -i "anoisesrc=d=0.5:c=pink:a=0.6" -af "highpass=f=500,lowpass=f=6000,afade=t=in:d=0.22,afade=t=out:st=0.22:d=0.28" public/whoosh.wav
-          CUT="$CUT" node make-props.js
-          ffprobe -v error -show_entries format=duration -of csv=p=0 public/source.mp4
+          node render.mjs "$PLAN_URL" "$VIDEO_URL" "$CUTOUT_URL"
+          ls -la ../out.mp4
 
-      - name: Render
-        working-directory: reel
-        run: npx remotion render src/index.ts Reel ../out.mp4 --props=props.json --concurrency=2 --codec=h264 --crf=23 --log=info
-
-      - name: Publish result
+      - name: Publish as a release
         env:
           GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
           JOB_ID: ${{ inputs.job_id }}
         run: |
           set -euo pipefail
-          gh release delete "job-$JOB_ID" --yes --cleanup-tag || true
-          gh release create "job-$JOB_ID" out.mp4 --title "job-$JOB_ID" --notes "Reel Studio render"
+          gh release create "job-$JOB_ID" out.mp4 --repo "$GITHUB_REPOSITORY" \
+            --title "job-$JOB_ID" --notes "Rendered by Reel Studio. Safe to delete after saving."

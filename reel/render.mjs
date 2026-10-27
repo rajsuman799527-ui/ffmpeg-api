@@ -23,7 +23,10 @@ await renderMedia({
   codec: 'h264',
   outputLocation: path.join(here, '..', 'out.mp4'),
   inputProps,
-  crf: 22,
+  crf: 23,
+  x264Preset: 'veryfast',
+  jpegQuality: 88,
+  timeoutInMilliseconds: 180000,
   concurrency: 4,
   onProgress: ({ progress }) => { if (Math.round(progress * 100) % 10 === 0) console.log('progress', Math.round(progress * 100)); },
 });

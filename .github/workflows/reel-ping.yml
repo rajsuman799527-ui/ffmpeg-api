@@ -1,0 +1,14 @@
+name: reel-ping
+run-name: "reel-ping ${{ inputs.job_id }}"
+on:
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: "Job id"
+        required: false
+        type: string
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "reel pipeline reachable"

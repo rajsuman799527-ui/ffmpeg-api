@@ -1,0 +1,13 @@
+{
+  "name": "reel-studio-renderer",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Remotion renderer used by YouTube Studio AI (Reel Studio)",
+  "dependencies": {
+    "@remotion/cli": "latest",
+    "@remotion/google-fonts": "latest",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "latest"
+  }
+}

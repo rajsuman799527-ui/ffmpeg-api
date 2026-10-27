@@ -1,67 +1,38 @@
-import React, { useMemo } from 'react';
-import { AbsoluteFill, Sequence, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
-import { ThemeCtx, getTheme } from './theme';
-import { FONT } from './ui';
-import { SceneBody, zoneFor } from './scenes';
-import { Background, Brand, Captions, Speaker, type CapStyle, type FrameKind } from './chrome';
-import { prepare, type PScene } from './timeline';
+import React from 'react';
+import { AbsoluteFill, OffthreadVideo, Audio, useVideoConfig } from 'remotion';
+import { MusicLayer, ReelProps, SfxLayer, SfxCfg, TplProps } from './common';
+import { YellowPop } from './templates/YellowPop';
+import { TEMPLATES } from './templates/registry';
 
-export type Plan = {
-  video: { width: number; height: number; fps: number };
-  duration?: number;
-  brand?: { logoText?: string };
-  style?: { theme?: string; accent?: string; frame?: string; captions?: string };
-  cuts: { start: number; end: number; reason?: string }[];
-  scenes: PScene[];
-  captions: { text: string; start: number; end: number }[];
-};
-export type ReelProps = { plan: Plan; videoUrl: string; cutoutUrl?: string };
+export const Reel: React.FC<ReelProps> = ({ plan, videoUrl, audioUrl }) => {
+  const { durationInFrames } = useVideoConfig();
+  const id = plan.template || 'yellow_pop';
+  const voice = plan.mode === 'voice' || !videoUrl;
+  const def = TEMPLATES[id];
 
-const EDGE = 8;
-
-/** One scene: soft entrance and a clean exit. No scene ever jumps. */
-const SceneShell: React.FC<{ scene: PScene; dur: number }> = ({ scene, dur }) => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const out = scene.transition_out || 'blur_fade';
-  const zone = zoneFor(scene.scene_type);
-  const inP = interpolate(frame, [0, 6], [0, 1], { extrapolateRight: 'clamp' });
-  const left = dur - frame;
-  const outP = out === 'cut' ? 1 : interpolate(left, [0, EDGE], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const opacity = out === 'cut' ? 1 : inP * outP;
-  const blur = out === 'blur_fade' ? (1 - outP) * 9 + (1 - inP) * 7 : 0;
-  const scale = out === 'zoom' ? 1 + (1 - outP) * 0.07 : 1;
-  return (
-    <div style={{ position: 'absolute', left: 40, right: 40, top: zone.top, height: zone.h, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity, transform: `scale(${scale})`, filter: blur > 0.4 ? `blur(${blur}px)` : 'none' }}>
-      <SceneBody type={scene.scene_type} g={scene.graphic ?? {}} anim={scene.animation || 'pop_in'} frame={frame} fps={fps} dur={dur} />
-    </div>
-  );
-};
-
-export const Reel: React.FC<ReelProps> = ({ plan, videoUrl }) => {
-  const { fps } = useVideoConfig();
-  const prep = useMemo(() => prepare(plan, fps), [plan, fps]);
-  const theme = useMemo(() => getTheme(plan.style?.theme, plan.style?.accent), [plan]);
-  const kind = (['circle', 'squircle', 'card'].includes(String(plan.style?.frame)) ? plan.style?.frame : 'circle') as FrameKind;
-  const capStyle = (plan.style?.captions === 'pop' ? 'pop' : 'strip') as CapStyle;
-  return (
-    <ThemeCtx.Provider value={theme}>
-      <AbsoluteFill style={{ fontFamily: FONT, background: theme.bg }}>
-        <Background />
-        {prep.scenes.map((s, i) => {
-          const from = Math.round(s.start * fps);
-          const to = i === prep.scenes.length - 1 ? prep.tl.totalFrames : Math.round(s.end * fps);
-          const dur = Math.max(1, to - from);
-          return (
-            <Sequence key={`${s.id}-${i}`} from={from} durationInFrames={dur}>
-              <SceneShell scene={s} dur={dur} />
-            </Sequence>
-          );
-        })}
-        <Speaker videoUrl={videoUrl} segs={prep.tl.segs} scenes={prep.scenes} kind={kind} />
-        <Captions captions={prep.captions} style={capStyle} />
-        <Brand text={plan.brand?.logoText ?? ''} totalFrames={prep.tl.totalFrames} />
+  if (!def) {
+    // original yellow talking-head layout
+    return (
+      <AbsoluteFill>
+        {videoUrl ? <YellowPop plan={plan as any} videoUrl={videoUrl} /> : null}
+        <SfxLayer plan={plan} cfg={{ phrase: 'tick', vol: 0.3 }} />
+        <MusicLayer track={plan.music?.track ?? 'warm'} volume={plan.music?.volume ?? 0.1} totalFrames={durationInFrames} />
       </AbsoluteFill>
-    </ThemeCtx.Provider>
+    );
+  }
+  const C = def.component as React.FC<TplProps>;
+  const sfx: SfxCfg = def.sfx;
+  return (
+    <AbsoluteFill style={{ background: '#000' }}>
+      {!voice && videoUrl ? (
+        <AbsoluteFill>
+          <OffthreadVideo src={videoUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </AbsoluteFill>
+      ) : null}
+      <C plan={plan} overVideo={!voice} />
+      {voice && audioUrl ? <Audio src={audioUrl} /> : null}
+      <SfxLayer plan={plan} cfg={sfx} />
+      <MusicLayer track={plan.music?.track ?? def.music} volume={plan.music?.volume ?? (voice ? 0.2 : 0.1)} totalFrames={durationInFrames} />
+    </AbsoluteFill>
   );
 };

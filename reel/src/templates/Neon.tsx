@@ -101,7 +101,7 @@ export const Neon: React.FC<TplProps> = ({ plan, overVideo }) => {
               const jit = p < 0.7 ? (hash(frame * 3 + i) - 0.5) * 14 : 0;
               const glow = emph ? `0 0 14px ${P}, 0 0 42px ${V}, 0 0 90px ${V}` : `0 0 10px ${V}, 0 0 30px ${V}`;
               return (
-                <span key={i} style={{ display: 'inline-block', fontWeight: emph ? 800 : 700, fontSize: emph ? 124 : 72, color: '#fff', opacity: p * flick, transform: `translate(${jit}px, ${(1 - p) * 34}px) scale(${0.85 + 0.15 * p})`, textShadow: `${glow}, 4px 0 0 rgba(255,0,90,${0.55 * pulse}), -4px 0 0 rgba(0,210,255,${0.5 * pulse})`, background: emph ? 'linear-gradient(180deg,#fff 25%,#ff9af5 100%)' : undefined, WebkitBackgroundClip: emph ? 'text' : undefined, WebkitTextFillColor: emph ? 'transparent' : undefined, filter: emph ? `drop-shadow(0 0 18px ${V})` : undefined }}>{w.t}</span>
+                <span key={i} style={{ display: 'inline-block', fontWeight: emph ? 800 : 700, fontSize: emph ? 124 : 72, opacity: p * flick, transform: `translate(${jit}px, ${(1 - p) * 34}px) scale(${0.85 + 0.15 * p})`, textShadow: `${glow}, 4px 0 0 rgba(255,0,90,${0.55 * pulse}), -4px 0 0 rgba(0,210,255,${0.5 * pulse})`, color: emph ? '#ffe3fb' : '#fff' }}>{w.t}</span>
               );
             })}
           </div>

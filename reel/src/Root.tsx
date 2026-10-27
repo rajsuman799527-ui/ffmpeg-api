@@ -1,22 +1,21 @@
 import React from 'react';
 import { Composition } from 'remotion';
 import { Reel, ReelProps } from './Reel';
-import { buildTimeline } from './timeline';
 
-const samplePlan = { video: { width: 720, height: 1280, fps: 30 }, duration: 5, brand: {}, cuts: [], scenes: [], captions: [] };
-
+const FPS = 30;
 export const Root: React.FC = () => (
   <Composition
     id="Reel"
-    component={Reel as any}
+    component={Reel as unknown as React.FC<Record<string, unknown>>}
     width={720}
     height={1280}
-    fps={30}
-    durationInFrames={150}
-    defaultProps={{ plan: samplePlan, videoFile: 'source.mp4', cutoutFile: '', hasSfx: false } as ReelProps}
-    calculateMetadata={({ props }: any) => {
-      const tl = buildTimeline(props.plan);
-      return { durationInFrames: Math.max(30, Math.round(tl.total * 30)), fps: 30, width: 720, height: 1280 };
+    fps={FPS}
+    durationInFrames={FPS * 10}
+    defaultProps={{ plan: { video: { width: 720, height: 1280, fps: 30 }, style: {}, cuts: [], scenes: [], captions: [] }, videoUrl: '', cutoutUrl: '' } as unknown as Record<string, unknown>}
+    calculateMetadata={({ props }) => {
+      const p = (props as unknown as ReelProps).plan;
+      const last = Math.max(1, ...p.scenes.map((s) => s.end), ...p.captions.map((c) => c.end));
+      return { durationInFrames: Math.ceil(last * FPS) };
     }}
   />
 );

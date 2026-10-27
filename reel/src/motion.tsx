@@ -191,7 +191,7 @@ export const SlabWipe: React.FC<{ plan: Plan; color: string; color2?: string }> 
   const x = interpolate(k, [0, 1], [-130, 130], { easing: Easing.inOut(Easing.cubic) });
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-      <div style={{ position: 'absolute', top: -300, bottom: -300, width: '70%', left: '15%', transform: `translateX(${x}%) skewX(-16deg)`, background: `linear-gradient(90deg, ${color2 ?? color}, ${color}, ${color2 ?? color})`, opacity: 0.85, filter: 'blur(2px)' }} />
+      <div style={{ position: 'absolute', top: -300, bottom: -300, width: '42%', left: '29%', transform: `translateX(${x}%) skewX(-16deg)`, background: `linear-gradient(90deg, ${color2 ?? color}, ${color}, ${color2 ?? color})`, opacity: 0.6, filter: 'blur(3px)' }} />
     </div>
   );
 };

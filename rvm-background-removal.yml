@@ -1,0 +1,96 @@
+name: RVM Video Background Removal
+
+on:
+  workflow_dispatch:
+    inputs:
+      video_url:
+        description: "Public HTTPS URL of the input video"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  remove-background:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout app repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg git
+          python -m pip install --upgrade pip
+
+      - name: Download input video
+        env:
+          VIDEO_URL: ${{ inputs.video_url }}
+        run: |
+          python - <<'PY'
+          import os
+          from urllib.parse import urlparse
+          u = urlparse(os.environ["VIDEO_URL"])
+          if u.scheme != "https" or not u.hostname:
+              raise SystemExit("Only HTTPS video URLs are allowed")
+          PY
+          curl --fail --location --silent --show-error \
+            --max-filesize 100000000 \
+            "$VIDEO_URL" -o input.mp4
+          test -s input.mp4
+          ffprobe -v error -show_entries format=duration \
+            -of default=noprint_wrappers=1:nokey=1 input.mp4
+
+      - name: Get RVM model
+        run: |
+          git clone --depth 1 \
+            https://github.com/PeterL1n/RobustVideoMatting.git rvm
+          curl -L --fail \
+            https://github.com/PeterL1n/RobustVideoMatting/releases/download/v1.0.0/rvm_mobilenetv3.pth \
+            -o rvm/rvm_mobilenetv3.pth
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install torch torchvision
+          python -m pip install \
+            opencv-python-headless \
+            numpy pillow tqdm
+
+      - name: Run RVM on CPU
+        run: |
+          cd rvm
+          python inference.py \
+            --variant mobilenetv3 \
+            --checkpoint rvm_mobilenetv3.pth \
+            --device cpu \
+            --input-source ../input.mp4 \
+            --output-type video \
+            --output-composition ../preview_green.mp4 \
+            --output-alpha ../alpha.mp4 \
+            --output-foreground ../foreground.mp4 \
+            --seq-chunk 1
+
+      - name: Create transparent WebM
+        run: |
+          ffmpeg -y \
+            -i foreground.mp4 \
+            -i alpha.mp4 \
+            -filter_complex \
+            "[0:v][1:v]alphamerge,format=yuva420p[out]" \
+            -map "[out]" -an \
+            -c:v libvpx-vp9 -pix_fmt yuva420p \
+            transparent.webm
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: rvm-background-removal-results
+          path: |
+            transparent.webm
+            preview_green.mp4
+            alpha.mp4
+          retention-days: 3
+          

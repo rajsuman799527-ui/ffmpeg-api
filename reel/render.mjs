@@ -1,33 +1,32 @@
-// Usage: node render.mjs <plan_url> <video_url> [cutout_url]
+// env: PLAN_URL, VIDEO_URL (optional), AUDIO_URL (optional), CUTOUT_URL (optional)
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { bundle } from '@remotion/bundler';
 import { renderMedia, selectComposition } from '@remotion/renderer';
 
-const [planUrl, videoUrl, cutoutUrl] = process.argv.slice(2);
-if (!planUrl || !videoUrl) { console.error('need plan_url and video_url'); process.exit(1); }
+const { PLAN_URL, VIDEO_URL = '', AUDIO_URL = '', CUTOUT_URL = '' } = process.env;
+if (!PLAN_URL) { console.error('need PLAN_URL'); process.exit(1); }
 const here = path.dirname(fileURLToPath(import.meta.url));
 
-const res = await fetch(planUrl);
+const res = await fetch(PLAN_URL);
 if (!res.ok) { console.error('plan download failed', res.status); process.exit(1); }
 const plan = await res.json();
-const last = Math.max(...plan.scenes.map((s) => s.end), ...plan.captions.map((c) => c.end));
-console.log('plan ok: scenes', plan.scenes.length, 'captions', plan.captions.length, 'seconds', last);
+const last = Math.max(1, ...plan.scenes.map((s) => s.end), ...plan.captions.map((c) => c.end));
+console.log('plan ok: template', plan.template || 'yellow_pop', 'mode', plan.mode || 'video', 'captions', plan.captions.length, 'seconds', last);
 
-const serveUrl = await bundle({ entryPoint: path.join(here, 'src/index.ts') });
-const inputProps = { plan, videoUrl, cutoutUrl: cutoutUrl || '' };
+// music + sound effects (synthesized, royalty free)
+const track = (plan.music && plan.music.track) || '';
+const g = spawnSync('node', ['gen-audio.mjs', 'public', String(Math.ceil(last + 4)), track || 'none'], { cwd: here, stdio: 'inherit' });
+if (g.status !== 0) { console.error('audio generation failed'); process.exit(1); }
+
+const serveUrl = await bundle({ entryPoint: path.join(here, 'src/index.ts'), publicDir: path.join(here, 'public') });
+const inputProps = { plan, videoUrl: VIDEO_URL, audioUrl: AUDIO_URL, cutoutUrl: CUTOUT_URL };
 const composition = await selectComposition({ serveUrl, id: 'Reel', inputProps });
 await renderMedia({
-  composition,
-  serveUrl,
-  codec: 'h264',
+  composition, serveUrl, codec: 'h264',
   outputLocation: path.join(here, '..', 'out.mp4'),
-  inputProps,
-  crf: 23,
-  x264Preset: 'veryfast',
-  jpegQuality: 88,
-  timeoutInMilliseconds: 180000,
-  concurrency: 4,
-  onProgress: ({ progress }) => { if (Math.round(progress * 100) % 10 === 0) console.log('progress', Math.round(progress * 100)); },
+  inputProps, crf: 22, concurrency: 2,
+  onProgress: ({ progress }) => { const p = Math.round(progress * 100); if (p % 10 === 0) console.log('progress', p); },
 });
 console.log('done');

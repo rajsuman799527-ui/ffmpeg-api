@@ -1,27 +1,21 @@
 import React from 'react';
 import { AbsoluteFill, OffthreadVideo, Audio, useVideoConfig } from 'remotion';
 import { MusicLayer, ReelProps, SfxLayer, SfxCfg, TplProps } from './common';
-import { YellowPop } from './templates/YellowPop';
+import { Studio } from './templates/Studio';
 import { TEMPLATES } from './templates/registry';
 
+/** "studio" (default) is the talking-head layout with real jump cuts. Every other template is caption-driven and plays over the full video (or alone, in voice mode). */
 export const Reel: React.FC<ReelProps> = ({ plan, videoUrl, audioUrl }) => {
   const { durationInFrames } = useVideoConfig();
-  const id = plan.template || 'yellow_pop';
+  const def = plan.template ? TEMPLATES[plan.template] : undefined;
   const voice = plan.mode === 'voice' || !videoUrl;
-  const def = TEMPLATES[id];
 
   if (!def) {
-    // original yellow talking-head layout
-    return (
-      <AbsoluteFill>
-        {videoUrl ? <YellowPop plan={plan as any} videoUrl={videoUrl} /> : null}
-        <SfxLayer plan={plan} cfg={{ phrase: 'tick', vol: 0.3 }} />
-        <MusicLayer track={plan.music?.track ?? 'warm'} volume={plan.music?.volume ?? 0.1} totalFrames={durationInFrames} />
-      </AbsoluteFill>
-    );
+    return <Studio plan={plan as any} videoUrl={videoUrl || ''} />;
   }
   const C = def.component as React.FC<TplProps>;
   const sfx: SfxCfg = def.sfx;
+  const music = plan.music === null ? undefined : (plan.music?.track ?? def.music);
   return (
     <AbsoluteFill style={{ background: '#000' }}>
       {!voice && videoUrl ? (
@@ -32,7 +26,7 @@ export const Reel: React.FC<ReelProps> = ({ plan, videoUrl, audioUrl }) => {
       <C plan={plan} overVideo={!voice} />
       {voice && audioUrl ? <Audio src={audioUrl} /> : null}
       <SfxLayer plan={plan} cfg={sfx} />
-      <MusicLayer track={plan.music?.track ?? def.music} volume={plan.music?.volume ?? (voice ? 0.2 : 0.1)} totalFrames={durationInFrames} />
+      <MusicLayer track={music} volume={plan.music?.volume ?? (voice ? 0.2 : 0.1)} totalFrames={durationInFrames} />
     </AbsoluteFill>
   );
 };

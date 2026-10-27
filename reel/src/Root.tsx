@@ -1,7 +1,7 @@
 import React from 'react';
 import { Composition } from 'remotion';
-import { Reel, type ReelProps } from './Reel';
-import { buildTimeline } from './timeline';
+import { Reel } from './Reel';
+import type { ReelProps } from './common';
 
 const FPS = 30;
 export const Root: React.FC = () => (
@@ -12,13 +12,11 @@ export const Root: React.FC = () => (
     height={1280}
     fps={FPS}
     durationInFrames={FPS * 10}
-    defaultProps={{ plan: { video: { width: 720, height: 1280, fps: 30 }, style: {}, cuts: [], scenes: [], captions: [] }, videoUrl: '', cutoutUrl: '' } as unknown as Record<string, unknown>}
+    defaultProps={{ plan: { video: { width: 720, height: 1280, fps: 30 }, style: {}, cuts: [], scenes: [], captions: [] }, videoUrl: '', audioUrl: '', cutoutUrl: '' } as unknown as Record<string, unknown>}
     calculateMetadata={({ props }) => {
       const p = (props as unknown as ReelProps).plan;
-      const lastEnd = Math.max(0, ...p.scenes.map((s) => Number(s.end) || 0), ...p.captions.map((c) => Number(c.end) || 0));
-      const plan = { ...p, duration: Number(p.duration) || lastEnd || 1 };
-      const tl = buildTimeline(plan, FPS);
-      return { durationInFrames: Math.max(30, tl.totalFrames) };
+      const last = Math.max(1, ...p.captions.map((c) => c.end), ...p.scenes.map((s: any) => s.end));
+      return { durationInFrames: Math.ceil((last + (p.mode === 'voice' ? 1.2 : 0)) * FPS) };
     }}
   />
 );

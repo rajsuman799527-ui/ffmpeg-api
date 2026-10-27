@@ -8,6 +8,7 @@ export type Plan = {
   style: Record<string, string>;
   template?: string; mode?: 'video' | 'voice';
   music?: { track?: string; volume?: number } | null;
+  tracks?: { url: string; start: number }[];
   cuts: { start: number; end: number; reason: string }[];
   scenes: any[];
   captions: Cap[];

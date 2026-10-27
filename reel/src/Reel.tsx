@@ -1,154 +1,158 @@
 import React from 'react';
-import { AbsoluteFill, Audio, Img, OffthreadVideo, Sequence, interpolate, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
-import { buildTimeline } from './timeline';
-import { SceneBody } from './scenes';
-import { C, FONT, lerp } from './ui';
+import { AbsoluteFill, Easing, OffthreadVideo, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { loadFont } from '@remotion/google-fonts/Poppins';
 
-export type ReelProps = { plan: any; videoFile: string; cutoutFile: string; hasSfx?: boolean };
+const { fontFamily } = loadFont('normal', { weights: ['600', '800'], subsets: ['latin'] });
 
-const CARD_X = 30;
-const CARD_W = 660;
-const TRANS = 9;
+export type Scene = {
+  id: string; start: number; end: number; scene_type: string;
+  graphic?: { text?: string; icons?: string[]; items?: string[]; number?: number; label?: string };
+  animation?: string; transition_out?: string;
+};
+export type Plan = {
+  video: { width: number; height: number; fps: number };
+  style: { accent?: string; text?: string };
+  cuts: { start: number; end: number; reason: string }[];
+  scenes: Scene[];
+  captions: { text: string; start: number; end: number }[];
+};
+export type ReelProps = { plan: Plan; videoUrl: string; cutoutUrl?: string };
 
-const layoutFor = (type: string) => (type === 'speaker_only' ? { top: 150, h: 990 } : { top: 610, h: 530 });
+const ACCENT = '#FFD600';
+const INK = '#111111';
+const TRANS = 8; // frames for soft transitions
 
-const Caption: React.FC<{ text: string; dur: number }> = ({ text, dur }) => {
+/* speaker circle: big when only the speaker is on screen, smaller when a graphic is shown */
+const circleFor = (s?: Scene) => (!s || s.scene_type === 'speaker_only' ? { size: 600, y: 470 } : { size: 360, y: 930 });
+
+const Speaker: React.FC<{ videoUrl: string; plan: Plan }> = ({ videoUrl, plan }) => {
   const frame = useCurrentFrame();
-  const words = text.split(/\s+/).filter(Boolean);
-  const total = words.join('').length || 1;
-  let acc = 0;
-  const times = words.map((w) => { const t = acc / total; acc += w.length; return t * dur * 0.9; });
-  let active = 0;
-  times.forEach((t, i) => { if (frame >= t) active = i; });
-  const o = interpolate(frame, [0, 4], [0, 1], { extrapolateRight: 'clamp' });
-  const y = interpolate(frame, [0, 6], [10, 0], { extrapolateRight: 'clamp' });
+  const { fps } = useVideoConfig();
+  const t = frame / fps;
+  const idx = Math.max(0, plan.scenes.findIndex((s) => t >= s.start && t < s.end));
+  const cur = circleFor(plan.scenes[idx]);
+  const prev = idx > 0 ? circleFor(plan.scenes[idx - 1]) : cur;
+  const local = frame - Math.round((plan.scenes[idx]?.start ?? 0) * fps);
+  const k = interpolate(local, [0, 12], [0, 1], { extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic) });
+  const size = prev.size + (cur.size - prev.size) * k;
+  const y = prev.y + (cur.y - prev.y) * k;
   return (
-    <div style={{ opacity: o, transform: 'translateY(' + y + 'px)', fontFamily: FONT, fontWeight: 800, fontSize: 38, lineHeight: 1.1, color: C.white, textAlign: 'center', textShadow: '0 2px 10px rgba(0,0,0,0.55)', padding: '0 26px' }}>
-      {words.map((w, i) => <span key={i} style={{ color: i === active ? C.accent : C.white }}>{w + (i < words.length - 1 ? ' ' : '')}</span>)}
+    <div style={{ position: 'absolute', left: 360 - size / 2, top: y - size / 2, width: size, height: size }}>
+      <div style={{ position: 'absolute', inset: -14, borderRadius: '50%', background: ACCENT, boxShadow: '0 10px 40px rgba(255,214,0,0.45)' }} />
+      <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', overflow: 'hidden', background: '#000' }}>
+        <OffthreadVideo src={videoUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      </div>
     </div>
   );
 };
 
-export const Reel: React.FC<ReelProps> = ({ plan, videoFile, cutoutFile, hasSfx }) => {
+const pop = (frame: number, fps: number, anim?: string, delay = 0) => {
+  const f = Math.max(0, frame - delay);
+  if (anim === 'slide_up') {
+    const p = spring({ frame: f, fps, config: { damping: 18 } });
+    return { opacity: p, transform: `translateY(${(1 - p) * 60}px)` };
+  }
+  const p = spring({ frame: f, fps, config: { damping: 12, stiffness: 140 } });
+  return { opacity: Math.min(1, p * 1.5), transform: `scale(${0.6 + 0.4 * p})` };
+};
+
+const Pill: React.FC<{ children: React.ReactNode; dark?: boolean; style?: React.CSSProperties }> = ({ children, dark, style }) => (
+  <div style={{ background: dark ? INK : ACCENT, color: dark ? ACCENT : INK, borderRadius: 999, padding: '14px 34px', fontWeight: 800, fontSize: 46, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', ...style }}>{children}</div>
+);
+
+const Graphic: React.FC<{ scene: Scene; frame: number }> = ({ scene, frame }) => {
+  const { fps } = useVideoConfig();
+  const g = scene.graphic ?? {};
+  const a = scene.animation;
+  const text = g.text || g.label || '';
+  const wrap: React.CSSProperties = { position: 'absolute', left: 40, right: 40, top: 120, height: 560, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 22, textAlign: 'center' };
+  const st = (i: number) => pop(frame, fps, a, i * 5);
+
+  switch (scene.scene_type) {
+    case 'speaker_only':
+      return null;
+    case 'title_pill':
+      return <div style={wrap}><div style={st(0)}><Pill>{text}</Pill></div></div>;
+    case 'chip_list':
+    case 'tag_highlight': {
+      const items = g.items?.length ? g.items : text ? [text] : [];
+      return <div style={{ ...wrap, flexDirection: 'row', flexWrap: 'wrap' }}>{items.slice(0, 6).map((it, i) => <div key={i} style={st(i)}><Pill dark={i % 2 === 1} style={{ fontSize: 40 }}>{it}</Pill></div>)}</div>;
+    }
+    case 'numbered_list':
+    case 'icon_flow':
+    case 'command_row': {
+      const items = g.items?.length ? g.items : [];
+      return (
+        <div style={wrap}>
+          {text ? <div style={st(0)}><Pill>{text}</Pill></div> : null}
+          {items.slice(0, 5).map((it, i) => (
+            <div key={i} style={{ ...st(i + 1), display: 'flex', alignItems: 'center', gap: 18, background: '#fff', borderRadius: 28, padding: '16px 30px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', fontSize: 40, fontWeight: 800 }}>
+              <span style={{ background: ACCENT, borderRadius: '50%', width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
+              <span style={scene.scene_type === 'command_row' ? { fontFamily: 'monospace' } : undefined}>{it}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    case 'counter': {
+      const target = g.number ?? 0;
+      const v = Math.round(interpolate(frame, [0, 30], [0, target], { extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic) }));
+      return <div style={wrap}><div style={{ ...st(0), fontSize: 190, fontWeight: 800, lineHeight: 1 }}>{v.toLocaleString('en-IN')}</div>{g.label || text ? <Pill>{g.label || text}</Pill> : null}</div>;
+    }
+    case 'compare_cards': {
+      const items = (g.items ?? []).slice(0, 2);
+      return <div style={{ ...wrap, flexDirection: 'row' }}>{items.map((it, i) => <div key={i} style={{ ...st(i), flex: 1, background: i ? ACCENT : '#fff', borderRadius: 32, padding: 28, fontSize: 38, fontWeight: 800, boxShadow: '0 10px 30px rgba(0,0,0,0.12)' }}>{it}</div>)}</div>;
+    }
+    case 'chat_bubble':
+      return <div style={wrap}><div style={{ ...st(0), background: '#fff', borderRadius: '36px 36px 36px 8px', padding: '26px 34px', fontSize: 44, fontWeight: 600, boxShadow: '0 10px 30px rgba(0,0,0,0.12)' }}>{text}</div></div>;
+    case 'thumbnail_card':
+      return <div style={wrap}><div style={{ ...st(0), background: '#fff', border: `8px solid ${ACCENT}`, borderRadius: 32, padding: '60px 40px', fontSize: 52, fontWeight: 800, boxShadow: '0 14px 36px rgba(0,0,0,0.15)' }}>{text}</div></div>;
+    case 'big_text':
+    default:
+      return <div style={wrap}><div style={{ ...st(0), fontSize: 84, fontWeight: 800, lineHeight: 1.1, color: INK }}>{text}</div></div>;
+  }
+};
+
+const Captions: React.FC<{ plan: Plan }> = ({ plan }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const tl = React.useMemo(() => buildTimeline(plan), [plan]);
-  const brand = plan.brand || {};
-
-  // scenes in output time, contiguous, covering the whole video
-  const scenes = React.useMemo(() => {
-    const list = (plan.scenes || []).map((s: any) => ({ ...s, s: tl.mapT(Number(s.start) || 0), e: tl.mapT(Number(s.end) || 0) }))
-      .filter((s: any) => s.e - s.s > 0.25).sort((a: any, b: any) => a.s - b.s);
-    if (!list.length) return [{ id: 0, scene_type: 'speaker_only', graphic: {}, animation: 'pop_in', transition_out: 'cut', s: 0, e: tl.total }];
-    list[0].s = 0;
-    for (let i = 0; i < list.length - 1; i++) list[i].e = list[i + 1].s;
-    list[list.length - 1].e = tl.total;
-    return list;
-  }, [plan, tl]);
-
-  const captions = React.useMemo(() => (plan.captions || [])
-    .map((c: any) => ({ text: String(c.text || ''), s: tl.mapT(Number(c.start) || 0), e: tl.mapT(Number(c.end) || 0) }))
-    .filter((c: any) => c.text && c.e - c.s > 0.12), [plan, tl]);
-
-  const nowT = frame / fps;
-  let idx = scenes.findIndex((s: any) => nowT >= s.s && nowT < s.e);
-  if (idx < 0) idx = scenes.length - 1;
-  const cur = scenes[idx];
-  const prev = scenes[idx - 1];
-  const k = interpolate(frame - Math.round(cur.s * fps), [0, 12], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const ease = k * k * (3 - 2 * k);
-  const a = prev ? layoutFor(prev.scene_type) : layoutFor(cur.scene_type);
-  const b = layoutFor(cur.scene_type);
-  const cardTop = a.top + (b.top - a.top) * ease;
-  const cardH = a.h + (b.h - a.h) * ease;
-  const circle = Math.min(CARD_W * 0.8, cardH * 0.98);
-  const useCut = !!cutoutFile;
-
-  const vStyle: React.CSSProperties = { width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 24%' };
-
+  const t = frame / fps;
+  const cap = plan.captions.find((c) => t >= c.start && t < c.end + 0.08);
+  if (!cap) return null;
+  const words = cap.text.split(/\s+/).filter(Boolean);
+  const per = (cap.end - cap.start) / Math.max(1, words.length);
+  const activeIdx = Math.min(words.length - 1, Math.floor((t - cap.start) / Math.max(0.05, per)));
+  const enter = spring({ frame: frame - Math.round(cap.start * fps), fps, config: { damping: 14 } });
   return (
-    <AbsoluteFill style={{ background: C.white, fontFamily: FONT, overflow: 'hidden' }}>
-      <AbsoluteFill style={{ background: 'radial-gradient(circle at 88% 6%, rgba(255,214,0,0.38), transparent 46%), radial-gradient(circle at 8% 94%, rgba(255,214,0,0.28), transparent 42%)' }} />
-
-      {/* graphics zone */}
-      <div style={{ position: 'absolute', left: CARD_X, top: 60, width: CARD_W, height: 500 }}>
-        {scenes.map((s: any, i: number) => {
-          const from = Math.round(s.s * fps);
-          const end = Math.round(s.e * fps);
-          const tail = i < scenes.length - 1 && s.transition_out !== 'cut' ? TRANS : 0;
-          const head = i > 0 && scenes[i - 1].transition_out !== 'cut' ? TRANS : 0;
-          const f = frame - from;
-          const total = end - from;
-          const r0 = 0, r1 = Math.max(1, head), r2 = Math.max(r1 + 1, total - tail), r3 = Math.max(r2 + 1, total); // strictly increasing input range
-          const op = interpolate(f, [r0, r1, r2, r3], [head ? 0 : 1, 1, 1, tail ? 0 : 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-          const blur = interpolate(f, [r0, r1, r2, r3], [head ? 10 : 0, 0, 0, tail ? 10 : 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-          const zoom = s.transition_out === 'zoom' && tail > 0 ? interpolate(f, [r2, r3], [1, 1.08], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }) : 1;
-          return (
-            <Sequence key={i} from={from} durationInFrames={Math.max(1, end - from + tail)} layout="none">
-              {frame >= from && frame < end + tail ? (
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: op, filter: blur > 0.2 ? 'blur(' + blur + 'px)' : 'none', transform: 'scale(' + zoom + ')' }}>
-                  <SceneBody type={s.scene_type} g={s.graphic || {}} anim={s.animation || 'pop_in'} frame={Math.max(0, f)} fps={fps} dur={Math.max(1, total)} />
-                </div>
-              ) : null}
-            </Sequence>
-          );
-        })}
+    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 300, background: 'linear-gradient(to top, rgba(10,10,10,0.92) 20%, rgba(10,10,10,0))', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 40px 90px' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '6px 16px', transform: `translateY(${(1 - enter) * 24}px)`, opacity: enter }}>
+        {words.map((w, i) => (
+          <span key={i} style={{ fontSize: 60, fontWeight: 800, color: i === activeIdx ? ACCENT : '#fff', textShadow: '0 3px 10px rgba(0,0,0,0.6)', transform: i === activeIdx ? 'scale(1.08)' : 'none' }}>{w}</span>
+        ))}
       </div>
+    </div>
+  );
+};
 
-      {/* speaker card */}
-      <div style={{ position: 'absolute', left: CARD_X, top: cardTop, width: CARD_W, height: cardH, borderRadius: 34, background: C.card, overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.06)' }}>
-        <div style={{ position: 'absolute', left: (CARD_W - circle) / 2, bottom: 0, width: circle, height: circle, borderRadius: '50%', background: C.accent }} />
-        {useCut ? (
-          <AbsoluteFill>
-            {tl.keep.map((seg, i) => (
-              <Sequence key={i} from={Math.round(seg.out * fps)} durationInFrames={Math.max(1, Math.round((seg.end - seg.start) * fps))} layout="none">
-                <AbsoluteFill><OffthreadVideo src={staticFile(cutoutFile)} startFrom={Math.round(seg.start * fps)} muted transparent style={vStyle} /></AbsoluteFill>
-              </Sequence>
-            ))}
-          </AbsoluteFill>
-        ) : (
-          <div style={{ position: 'absolute', left: (CARD_W - circle * 0.94) / 2, bottom: circle * 0.03, width: circle * 0.94, height: circle * 0.94, borderRadius: '50%', overflow: 'hidden', border: '6px solid ' + C.white, boxShadow: '0 8px 24px rgba(0,0,0,0.18)' }}>
-            {tl.keep.map((seg, i) => (
-              <Sequence key={i} from={Math.round(seg.out * fps)} durationInFrames={Math.max(1, Math.round((seg.end - seg.start) * fps))} layout="none">
-                <AbsoluteFill><OffthreadVideo src={staticFile(videoFile)} startFrom={Math.round(seg.start * fps)} muted style={vStyle} /></AbsoluteFill>
-              </Sequence>
-            ))}
-          </div>
-        )}
-        {/* caption strip */}
-        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 170, background: 'linear-gradient(to top, rgba(0,0,0,0.92), rgba(0,0,0,0.55) 55%, rgba(0,0,0,0))', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: 30 }}>
-          {captions.map((c: any, i: number) => {
-            const from = Math.round(c.s * fps);
-            const d = Math.max(2, Math.round(c.e * fps) - from);
-            return (
-              <Sequence key={i} from={from} durationInFrames={d} layout="none">
-                <div style={{ position: 'absolute', left: 0, right: 0, bottom: 30 }}><Caption text={c.text} dur={d} /></div>
-              </Sequence>
-            );
-          })}
-        </div>
+export const Reel: React.FC<ReelProps> = ({ plan, videoUrl }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const t = frame / fps;
+  const scene = plan.scenes.find((s) => t >= s.start && t < s.end) ?? plan.scenes[plan.scenes.length - 1];
+  const sf = Math.round((scene?.start ?? 0) * fps);
+  const ef = Math.round((scene?.end ?? 0) * fps);
+  // soft blur-fade at the start and end of every scene
+  const edge = Math.min(frame - sf, ef - frame);
+  const soft = scene?.transition_out === 'cut' ? 1 : interpolate(edge, [0, TRANS], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  return (
+    <AbsoluteFill style={{ fontFamily, background: '#fff' }}>
+      <AbsoluteFill style={{ background: 'radial-gradient(circle at 50% 38%, rgba(255,214,0,0.42), rgba(255,255,255,0) 62%)' }} />
+      <div style={{ position: 'absolute', inset: 0, filter: `blur(${(1 - soft) * 14}px)`, opacity: 0.35 + 0.65 * soft }}>
+        {scene ? <Graphic key={scene.id} scene={scene} frame={frame - sf} /> : null}
       </div>
-
-      {/* original audio, jump cuts applied */}
-      {tl.keep.map((seg, i) => (
-        <Sequence key={'a' + i} from={Math.round(seg.out * fps)} durationInFrames={Math.max(1, Math.round((seg.end - seg.start) * fps))} layout="none">
-          <Audio src={staticFile(videoFile)} startFrom={Math.round(seg.start * fps)} />
-        </Sequence>
-      ))}
-
-      {/* sound effects */}
-      {hasSfx ? scenes.map((s: any, i: number) => (i === 0 || s.scene_type === 'speaker_only' ? null : (
-        <Sequence key={'s' + i} from={Math.round(s.s * fps)} durationInFrames={Math.round(0.5 * fps)} layout="none">
-          <Audio src={staticFile(s.transition_out === 'blur_fade' || s.transition_out === 'zoom' ? 'whoosh.wav' : 'pop.wav')} volume={0.28} />
-        </Sequence>
-      ))) : null}
-
-      {/* logo */}
-      {brand.logoUrl ? (
-        <Img src={brand.logoUrl} style={{ position: 'absolute', right: 36, bottom: 56, height: 46, opacity: 0.75 }} />
-      ) : brand.logoText ? (
-        <div style={{ position: 'absolute', right: 40, bottom: 60, fontFamily: FONT, fontWeight: 800, fontSize: 24, color: '#B5B5B5', letterSpacing: 0.4 }}>{brand.logoText}</div>
-      ) : null}
+      <Speaker videoUrl={videoUrl} plan={plan} />
+      <Captions plan={plan} />
+      <div style={{ position: 'absolute', top: 40, right: 40, background: INK, color: ACCENT, fontWeight: 800, fontSize: 26, borderRadius: 999, padding: '8px 22px' }}>YouTube Studio AI</div>
     </AbsoluteFill>
   );
 };

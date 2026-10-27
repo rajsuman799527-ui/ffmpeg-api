@@ -23,7 +23,7 @@ const INK = '#111111';
 const TRANS = 8; // frames for soft transitions
 
 /* speaker circle: big when only the speaker is on screen, smaller when a graphic is shown */
-const circleFor = (s?: Scene) => (!s || s.scene_type === 'speaker_only' ? { size: 600, y: 470 } : { size: 360, y: 930 });
+const circleFor = (s?: Scene) => (!s || s.scene_type === 'speaker_only' ? { size: 600, y: 470 } : { size: 340, y: 800 });
 
 const Speaker: React.FC<{ videoUrl: string; plan: Plan }> = ({ videoUrl, plan }) => {
   const frame = useCurrentFrame();

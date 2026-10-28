@@ -62,7 +62,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-          python -m pip install av==9.2.0 pims opencv-python-headless numpy pillow tqdm
+          python -m pip install av opencv-python-headless numpy pillow tqdm
 
       - name: Split the video into frames
         run: |
@@ -73,6 +73,8 @@ jobs:
       - name: Run RVM on CPU
         run: |
           cd rvm
+          # inference_utils imports pims at load time but only uses it for video files; we feed image frames, so an empty stub is enough.
+          echo '' > pims.py
           python inference.py \
             --variant mobilenetv3 \
             --checkpoint rvm_mobilenetv3.pth \

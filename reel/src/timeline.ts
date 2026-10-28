@@ -40,7 +40,8 @@ export function buildTimeline(plan: any, fps: number) {
 }
 
 export type PScene = { id: string; start: number; end: number; scene_type: string; graphic?: any; animation?: string; transition_out?: string };
-export type PCaption = { text: string; start: number; end: number };
+export type PWord = { t: string; s: number; e: number };
+export type PCaption = { text: string; start: number; end: number; words?: PWord[]; emphasis?: number; number?: number; visual?: string };
 
 export function prepare(plan: any, fps: number) {
   const tl = buildTimeline(plan, fps);
@@ -53,7 +54,13 @@ export function prepare(plan: any, fps: number) {
   scenes[scenes.length - 1].end = Math.max(tl.total, scenes[scenes.length - 1].start + 0.1);
   scenes = scenes.map((s) => ({ ...s, end: Math.max(s.end, s.start + 0.1) }));
   const captions: PCaption[] = (plan.captions || [])
-    .map((c: any) => ({ text: String(c.text || ''), start: tl.mapT(Number(c.start) || 0), end: tl.mapT(Number(c.end) || 0) }))
+    .map((c: any) => ({
+      text: String(c.text || ''), start: tl.mapT(Number(c.start) || 0), end: tl.mapT(Number(c.end) || 0),
+      words: Array.isArray(c.words) && c.words.length ? c.words.map((w: any) => ({ t: String(w.t), s: tl.mapT(Number(w.s) || 0), e: tl.mapT(Number(w.e) || 0) })) : undefined,
+      emphasis: typeof c.emphasis === 'number' ? c.emphasis : undefined,
+      number: typeof c.number === 'number' ? c.number : undefined,
+      visual: typeof c.visual === 'string' ? c.visual : undefined,
+    }))
     .filter((c: PCaption) => c.text && c.end - c.start > 0.05)
     .sort((a: PCaption, b: PCaption) => a.start - b.start);
   return { tl, scenes, captions };

@@ -66,7 +66,7 @@ export const Studio: React.FC<StudioProps> = ({ plan, videoUrl, audioUrl, cutout
           );
         })}
         {plan.sfx === false ? null : prep.scenes.slice(1).map((s, i) => (
-          <Sequence key={`sw${i}`} from={Math.max(0, Math.round(s.start * fps) - 3)} durationInFrames={30}><Audio src={staticFile('sfx/swish.wav')} volume={0.22} /></Sequence>
+          <Sequence key={`sw${i}`} from={Math.max(0, Math.round(s.start * fps) - 3)} durationInFrames={30}><Audio src={staticFile('sfx/swish.wav')} volume={0.07} /></Sequence>
         ))}
         {voice ? (
           <>

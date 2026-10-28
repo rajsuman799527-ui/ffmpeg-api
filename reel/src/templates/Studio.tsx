@@ -11,6 +11,7 @@ type StudioPlan = {
   video: { width: number; height: number; fps: number };
   duration?: number;
   mode?: 'video' | 'voice';
+  tracks?: { url: string; start: number }[];
   sfx?: boolean;
   brand?: { logoText?: string };
   style?: { theme?: string; accent?: string; frame?: string; captions?: string; currency?: string };
@@ -70,7 +71,9 @@ export const Studio: React.FC<StudioProps> = ({ plan, videoUrl, audioUrl, cutout
         {voice ? (
           <>
             <VoiceOrb scenes={prep.scenes} />
-            {audioUrl ? <Audio src={audioUrl} /> : null}
+            {plan.tracks && plan.tracks.length
+              ? plan.tracks.map((t, i) => <Sequence key={i} from={Math.max(0, Math.round(t.start * fps))}><Audio src={t.url} /></Sequence>)
+              : audioUrl ? <Audio src={audioUrl} /> : null}
           </>
         ) : (
           <Speaker videoUrl={videoUrl} cutoutUrl={cutoutUrl} segs={prep.tl.segs} scenes={prep.scenes} kind={kind} />

@@ -1,8 +1,9 @@
 import React from 'react';
 import { Arrow, FONT, Icon, Pill, clamp01, enter, lerp, pop, useCard } from './ui';
 import { useTheme } from './theme';
+import { GLASS_TYPES, GlassBody } from './glass';
 
-export type G = { text?: string; icons?: string[]; items?: string[]; number?: number | null; label?: string; prefix?: string; suffix?: string };
+export type G = { text?: string; icons?: string[]; items?: string[]; number?: number | null; label?: string; prefix?: string; suffix?: string; image?: string };
 type SP = { g: G; anim: string; frame: number; fps: number; dur: number };
 
 const split = (s: string): [string, string] => {
@@ -465,6 +466,6 @@ export const SceneBody: React.FC<SP & { type: string }> = (p) => {
     case 'checklist': return <Checklist {...p} />;
     case 'myth_fact': return <MythFact {...p} />;
     case 'lower_third': return <LowerThird {...p} />;
-    default: return null; // speaker_only
+    default: return GLASS_TYPES.includes(p.type) ? <GlassBody {...p} /> : null; // glass_* and photo_3d; speaker_only draws nothing
   }
 };

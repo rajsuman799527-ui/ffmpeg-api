@@ -62,26 +62,33 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-          python -m pip install av opencv-python-headless numpy pillow tqdm
+          python -m pip install av==9.2.0 pims opencv-python-headless numpy pillow tqdm
+
+      - name: Split the video into frames
+        run: |
+          mkdir -p frames
+          ffmpeg -y -v error -i input.mp4 -vsync 0 -q:v 2 frames/%05d.jpg
+          ls frames | wc -l
 
       - name: Run RVM on CPU
         run: |
           cd rvm
-          python inference.py \
-            --variant mobilenetv3 \
-            --checkpoint rvm_mobilenetv3.pth \
-            --device cpu \
-            --input-source ../input.mp4 \
-            --output-type video \
-            --output-alpha ../alpha.mp4 \
-            --output-foreground ../foreground.mp4 \
-            --seq-chunk 1
+          python inference.py \\
+            --variant mobilenetv3 \\
+            --checkpoint rvm_mobilenetv3.pth \\
+            --device cpu \\
+            --input-source ../frames \\
+            --output-type png_sequence \\
+            --output-alpha ../alpha \\
+            --output-foreground ../fg
+          ls ../alpha | wc -l
 
       - name: Create transparent WebM
         run: |
-          ffmpeg -y -v error -i foreground.mp4 -i alpha.mp4 \
-            -filter_complex "[0:v][1:v]alphamerge,format=yuva420p[out]" \
-            -map "[out]" -an -c:v libvpx-vp9 -pix_fmt yuva420p -b:v 0 -crf 32 -row-mt 1 \
+          FPS=$(ffprobe -v error -select_streams v:0 -show_entries stream=r_frame_rate -of csv=p=0 input.mp4)
+          ffmpeg -y -v error -framerate "$FPS" -i fg/%04d.png -framerate "$FPS" -i alpha/%04d.png \\
+            -filter_complex "[0:v][1:v]alphamerge,format=yuva420p[out]" \\
+            -map "[out]" -an -c:v libvpx-vp9 -pix_fmt yuva420p -b:v 0 -crf 32 -row-mt 1 \\
             transparent.webm
           ls -la transparent.webm
 

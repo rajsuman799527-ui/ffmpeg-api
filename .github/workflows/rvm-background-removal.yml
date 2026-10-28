@@ -73,22 +73,22 @@ jobs:
       - name: Run RVM on CPU
         run: |
           cd rvm
-          python inference.py \\
-            --variant mobilenetv3 \\
-            --checkpoint rvm_mobilenetv3.pth \\
-            --device cpu \\
-            --input-source ../frames \\
-            --output-type png_sequence \\
-            --output-alpha ../alpha \\
+          python inference.py \
+            --variant mobilenetv3 \
+            --checkpoint rvm_mobilenetv3.pth \
+            --device cpu \
+            --input-source ../frames \
+            --output-type png_sequence \
+            --output-alpha ../alpha \
             --output-foreground ../fg
           ls ../alpha | wc -l
 
       - name: Create transparent WebM
         run: |
           FPS=$(ffprobe -v error -select_streams v:0 -show_entries stream=r_frame_rate -of csv=p=0 input.mp4)
-          ffmpeg -y -v error -framerate "$FPS" -i fg/%04d.png -framerate "$FPS" -i alpha/%04d.png \\
-            -filter_complex "[0:v][1:v]alphamerge,format=yuva420p[out]" \\
-            -map "[out]" -an -c:v libvpx-vp9 -pix_fmt yuva420p -b:v 0 -crf 32 -row-mt 1 \\
+          ffmpeg -y -v error -framerate "$FPS" -i fg/%04d.png -framerate "$FPS" -i alpha/%04d.png \
+            -filter_complex "[0:v][1:v]alphamerge,format=yuva420p[out]" \
+            -map "[out]" -an -c:v libvpx-vp9 -pix_fmt yuva420p -b:v 0 -crf 32 -row-mt 1 \
             transparent.webm
           ls -la transparent.webm
 

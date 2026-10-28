@@ -61,13 +61,12 @@ export const Blob: React.FC<{ x: number; y: number; size: number; color: string;
 export type SfxCfg = { phrase?: string; emphasis?: string; gap?: string; vol?: number };
 export const SfxLayer: React.FC<{ plan: Plan; cfg: SfxCfg }> = ({ plan, cfg }) => {
   const { fps } = useVideoConfig();
-  const vol = cfg.vol ?? 0.5;
+  const vol = (cfg.vol ?? 0.5) * 0.3; // effects stay far under the voice and music
   const out: React.ReactNode[] = [];
   plan.captions.forEach((c, i) => {
     const prevEnd = i ? plan.captions[i - 1].end : -9;
     const f = Math.max(0, Math.round(c.start * fps));
     if (cfg.gap && c.start - prevEnd > 0.55) out.push(<Sequence key={'g' + i} from={Math.max(0, f - 6)} durationInFrames={50}><Audio src={staticFile(`sfx/${cfg.gap}.wav`)} volume={vol} /></Sequence>);
-    else if (cfg.phrase) out.push(<Sequence key={'p' + i} from={f} durationInFrames={50}><Audio src={staticFile(`sfx/${cfg.phrase}.wav`)} volume={vol * 0.8} /></Sequence>);
     if (cfg.emphasis && c.emphasis != null) {
       const w = capWords(c)[c.emphasis];
       if (w) out.push(<Sequence key={'e' + i} from={Math.max(0, Math.round(w.s * fps))} durationInFrames={90}><Audio src={staticFile(`sfx/${cfg.emphasis}.wav`)} volume={vol * 0.9} /></Sequence>);

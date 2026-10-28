@@ -17,7 +17,7 @@ type StudioPlan = {
   scenes: PScene[];
   captions: { text: string; start: number; end: number }[];
 };
-export type StudioProps = { plan: StudioPlan; videoUrl: string };
+export type StudioProps = { plan: StudioPlan; videoUrl: string; cutoutUrl?: string };
 
 const EDGE = 8;
 
@@ -40,7 +40,7 @@ const SceneShell: React.FC<{ scene: PScene; dur: number }> = ({ scene, dur }) =>
   );
 };
 
-export const Studio: React.FC<StudioProps> = ({ plan, videoUrl }) => {
+export const Studio: React.FC<StudioProps> = ({ plan, videoUrl, cutoutUrl }) => {
   const { fps } = useVideoConfig();
   const prep = useMemo(() => prepare(plan, fps), [plan, fps]);
   const theme = useMemo(() => getTheme(plan.style?.theme, plan.style?.accent), [plan]);
@@ -60,7 +60,7 @@ export const Studio: React.FC<StudioProps> = ({ plan, videoUrl }) => {
             </Sequence>
           );
         })}
-        <Speaker videoUrl={videoUrl} segs={prep.tl.segs} scenes={prep.scenes} kind={kind} />
+        <Speaker videoUrl={videoUrl} cutoutUrl={cutoutUrl} segs={prep.tl.segs} scenes={prep.scenes} kind={kind} />
         <Captions captions={prep.captions} style={capStyle} />
         <SfxLayer plan={{ ...(plan as any), captions: prep.captions }} cfg={{ phrase: 'tick', vol: 0.28 }} />
         {plan.music === null ? null : <MusicLayer track={plan.music?.track ?? 'warm'} volume={plan.music?.volume ?? 0.1} totalFrames={prep.tl.totalFrames} />}

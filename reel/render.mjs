@@ -14,12 +14,10 @@ const res = await fetch(PLAN_URL);
 if (!res.ok) { console.error('plan download failed', res.status); process.exit(1); }
 const plan = await res.json();
 const last = Math.max(1, ...plan.scenes.map((s) => s.end), ...plan.captions.map((c) => c.end));
-console.log('plan ok: template', plan.template || 'yellow_pop', 'mode', plan.mode || 'video', 'captions', plan.captions.length, 'seconds', last);
+console.log('plan ok: mode', plan.mode || 'video', 'captions', plan.captions.length, 'seconds', last);
 
 // music + sound effects (synthesized, royalty free)
-const TPL_MUSIC = { crimson: 'cinema', noir: 'cinema', neon: 'neon', mono: 'warm', lime: 'warm', finance: 'neon', hud: 'cinema', money: 'cinema' };
-const tplId = plan.template && TPL_MUSIC[plan.template] ? plan.template : 'studio';
-const track = plan.music === null ? '' : ((plan.music && plan.music.track) || TPL_MUSIC[tplId] || 'warm');
+const track = plan.music === null ? '' : ((plan.music && plan.music.track) || 'warm');
 const g = spawnSync('node', ['gen-audio.mjs', 'public', String(Math.ceil(last + 4)), track || 'none'], { cwd: here, stdio: 'inherit' });
 if (g.status !== 0) { console.error('audio generation failed'); process.exit(1); }
 

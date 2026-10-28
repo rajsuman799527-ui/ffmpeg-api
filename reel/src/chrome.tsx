@@ -178,6 +178,7 @@ const compact = (n: number) => {
   return String(Math.round(n * 10) / 10);
 };
 
+const ICON_ALIAS: Record<string, string> = { chart_up: 'trend', chart_down: 'arrow' };
 export const CapGraphics: React.FC<{ captions: PCaption[]; currency?: string }> = ({ captions, currency = '' }) => {
   const T = useTheme();
   const frame = useCurrentFrame();
@@ -196,7 +197,7 @@ export const CapGraphics: React.FC<{ captions: PCaption[]; currency?: string }> 
     <>
       {cap.visual ? (
         <div style={{ position: 'absolute', left: 26, top: 640 + float, width: 124, height: 124, borderRadius: 38, background: T.dark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.85)', border: `2px solid ${T.accent}`, boxShadow: `0 14px 40px ${T.accent}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: o, transform: `scale(${0.4 + 0.6 * inP}) rotate(${(1 - inP) * -18}deg)` }}>
-          <StrokeIcon id={cap.visual} size={68} color={T.dark ? '#fff' : '#111'} width={1.7} progress={clamp01(k / 14)} glow={T.accent} />
+          <StrokeIcon id={ICON_ALIAS[cap.visual] ?? cap.visual} size={68} color={T.dark ? '#fff' : '#111'} width={1.7} progress={clamp01(k / 14)} glow={T.accent} />
         </div>
       ) : null}
       {hasNum ? (

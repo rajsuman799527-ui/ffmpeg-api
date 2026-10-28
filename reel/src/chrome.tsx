@@ -1,5 +1,5 @@
 import React from 'react';
-import { AbsoluteFill, Easing, OffthreadVideo, Sequence, interpolate, random, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Audio, Easing, OffthreadVideo, Sequence, interpolate, random, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { FONT, clamp01 } from './ui';
 import { useTheme } from './theme';
 import { BIG_SPEAKER } from './scenes';
@@ -37,7 +37,7 @@ const geom = (kind: FrameKind, big: boolean) => {
   return big ? { w: 600, h: 600, y: 480, r: 300 } : { w: 340, h: 340, y: 785, r: 170 };
 };
 
-export const Speaker: React.FC<{ videoUrl: string; segs: Seg[]; scenes: PScene[]; kind: FrameKind }> = ({ videoUrl, segs, scenes, kind }) => {
+export const Speaker: React.FC<{ videoUrl: string; cutoutUrl?: string; segs: Seg[]; scenes: PScene[]; kind: FrameKind }> = ({ videoUrl, cutoutUrl, segs, scenes, kind }) => {
   const T = useTheme();
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -55,6 +55,28 @@ export const Speaker: React.FC<{ videoUrl: string; segs: Seg[]; scenes: PScene[]
   const r = gp.r + (gc.r - gp.r) * k;
   const pulse = (frame % 60) / 60;
   const inner = kind === 'card' ? Math.min(w, h) - 70 : 0;
+  if (cutoutUrl) {
+    // Background removed: the speaker stands on the theme background (no frame). Sound still comes from the original clip, with the same jump cuts.
+    const cw = w * 1.18, ch = h * 1.18;
+    const bottom = y + h / 2;
+    return (
+      <>
+        {segs.map((s, i) => (
+          <Sequence key={'a' + i} from={s.outFrame} durationInFrames={s.frames}>
+            <Audio src={videoUrl} startFrom={Math.round(s.start * fps)} />
+          </Sequence>
+        ))}
+        <div style={{ position: 'absolute', left: 360 - (w * 0.92) / 2, top: y - h * 0.05 - (w * 0.92) / 2, width: w * 0.92, height: w * 0.92, borderRadius: '50%', background: T.accent, boxShadow: `0 12px 44px ${T.accent}77`, opacity: 0.95 }} />
+        <div style={{ position: 'absolute', left: 360 - cw / 2, top: bottom - ch, width: cw, height: ch, filter: 'drop-shadow(0 18px 30px rgba(0,0,0,0.35))' }}>
+          {segs.map((s, i) => (
+            <Sequence key={'v' + i} from={s.outFrame} durationInFrames={s.frames}>
+              <OffthreadVideo src={cutoutUrl} transparent muted startFrom={Math.round(s.start * fps)} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 30%' }} />
+            </Sequence>
+          ))}
+        </div>
+      </>
+    );
+  }
   const media = (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', background: '#000', borderRadius: kind === 'card' ? '50%' : r }}>
       {segs.map((s, i) => (

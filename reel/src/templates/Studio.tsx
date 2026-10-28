@@ -6,6 +6,8 @@ import { SceneBody, zoneFor } from '../scenes';
 import { Background, Brand, CapGraphics, Captions, Speaker, VoiceOrb, type CapStyle, type FrameKind } from '../chrome';
 import { prepare, type PScene, type PCaption } from '../timeline';
 import { MusicLayer, SfxLayer } from '../common';
+import { BeatCtx, BeatGlow, BeatScope, TRACK_BPM, snapFrame } from '../beat';
+import { cuesFor } from '../cues';
 
 type StudioPlan = {
   video: { width: number; height: number; fps: number };
@@ -51,23 +53,45 @@ export const Studio: React.FC<StudioProps> = ({ plan, videoUrl, audioUrl, cutout
   const theme = useMemo(() => getTheme(plan.style?.theme, plan.style?.accent), [plan]);
   const kind = (['circle', 'squircle', 'card'].includes(String(plan.style?.frame)) ? plan.style?.frame : 'circle') as FrameKind;
   const capStyle = (CAP_STYLES.includes(String(plan.style?.captions)) ? plan.style?.captions : 'strip') as CapStyle;
+  const trackName = plan.music === null ? '' : (plan.music?.track ?? 'warm');
+  const bpm = TRACK_BPM[trackName] || 0;
+  // The music dips while someone is speaking and comes back up in the gaps.
+  const duck = useMemo(() => {
+    const win = prep.captions.map((c) => [Math.round(c.start * fps), Math.round(c.end * fps)]).sort((a, b) => a[0] - b[0]);
+    const merged: number[][] = [];
+    for (const w of win) { const last = merged[merged.length - 1]; if (last && w[0] - last[1] < Math.round(0.45 * fps)) last[1] = Math.max(last[1], w[1]); else merged.push([w[0], w[1]]); }
+    const xs: number[] = [0], ys: number[] = [1];
+    const add = (x: number, y: number) => { xs.push(Math.max(x, xs[xs.length - 1] + 1)); ys.push(y); };
+    for (const [a, b] of merged) { add(a - 8, 1); add(a, 0.6); add(b, 0.6); add(b + 14, 1); }
+    add(prep.tl.totalFrames + 1000, 1);
+    return (f: number) => interpolate(f, xs, ys, { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  }, [prep, fps]);
   return (
     <ThemeCtx.Provider value={theme}>
+      <BeatCtx.Provider value={{ bpm, offset: 0 }}>
       <AbsoluteFill style={{ fontFamily: FONT, background: theme.bg }}>
         <Background />
+        <BeatGlow />
         {prep.scenes.map((s, i) => {
           const from = Math.round(s.start * fps);
           const to = i === prep.scenes.length - 1 ? prep.tl.totalFrames : Math.round(s.end * fps);
           const dur = Math.max(1, to - from);
           return (
             <Sequence key={`${s.id}-${i}`} from={from} durationInFrames={dur}>
-              <SceneShell scene={s} dur={dur} />
+              <BeatScope offset={from}><SceneShell scene={s} dur={dur} /></BeatScope>
             </Sequence>
           );
         })}
         {plan.sfx === false ? null : prep.scenes.slice(1).map((s, i) => (
           <Sequence key={`sw${i}`} from={Math.max(0, Math.round(s.start * fps) - 3)} durationInFrames={30}><Audio src={staticFile('sfx/swish.wav')} volume={0.07} /></Sequence>
         ))}
+        {plan.sfx === false ? null : prep.scenes.map((s, i) => {
+          const from = Math.round(s.start * fps);
+          const to = i === prep.scenes.length - 1 ? prep.tl.totalFrames : Math.round(s.end * fps);
+          return cuesFor(s.scene_type, (s.graphic as any)?.items).filter((q) => q.f < to - from - 4).map((q, k) => (
+            <Sequence key={`cue${i}-${k}`} from={snapFrame(from + q.f, bpm, fps)} durationInFrames={70}><Audio src={staticFile(`sfx/${q.sfx}.wav`)} volume={q.vol} /></Sequence>
+          ));
+        })}
         {voice ? (
           <>
             <VoiceOrb scenes={prep.scenes} />
@@ -81,9 +105,10 @@ export const Studio: React.FC<StudioProps> = ({ plan, videoUrl, audioUrl, cutout
         <CapGraphics captions={prep.captions} currency={plan.style?.currency ?? ''} />
         <Captions captions={prep.captions} style={capStyle} />
         {plan.sfx === false ? null : <SfxLayer plan={{ ...(plan as any), captions: prep.captions }} cfg={{ phrase: 'tick', emphasis: 'pop', vol: 0.24 }} />}
-        {plan.music === null ? null : <MusicLayer track={plan.music?.track ?? 'warm'} volume={plan.music?.volume ?? (voice ? 0.14 : 0.1)} totalFrames={prep.tl.totalFrames} />}
+        {plan.music === null ? null : <MusicLayer track={plan.music?.track ?? 'warm'} volume={plan.music?.volume ?? (voice ? 0.14 : 0.1)} totalFrames={prep.tl.totalFrames} duck={duck} />}
         <Brand text={plan.brand?.logoText ?? ''} totalFrames={prep.tl.totalFrames} />
       </AbsoluteFill>
+      </BeatCtx.Provider>
     </ThemeCtx.Provider>
   );
 };

@@ -74,8 +74,8 @@ export const SfxLayer: React.FC<{ plan: Plan; cfg: SfxCfg }> = ({ plan, cfg }) =
   });
   return <>{out}</>;
 };
-export const MusicLayer: React.FC<{ track?: string; volume: number; totalFrames: number }> = ({ track, volume, totalFrames }) => {
+export const MusicLayer: React.FC<{ track?: string; volume: number; totalFrames: number; duck?: (f: number) => number }> = ({ track, volume, totalFrames, duck }) => {
   const { fps } = useVideoConfig();
   if (!track) return null;
-  return <Audio src={staticFile(`music/${track}.wav`)} loop volume={(f) => volume * interpolate(f, [0, fps * 1.2, totalFrames - fps * 1.6, totalFrames], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })} />;
+  return <Audio src={staticFile(`music/${track}.wav`)} loop volume={(f) => volume * (duck ? duck(f) : 1) * interpolate(f, [0, fps * 1.2, totalFrames - fps * 1.6, totalFrames], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })} />;
 };

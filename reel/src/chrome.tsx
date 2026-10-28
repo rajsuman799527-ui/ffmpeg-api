@@ -58,7 +58,7 @@ export const Speaker: React.FC<{ videoUrl: string; cutoutUrl?: string; segs: Seg
   const inner = kind === 'card' ? Math.min(w, h) - 70 : 0;
   if (cutoutUrl) {
     // Background removed: the speaker stands on the theme background (no frame). Sound still comes from the original clip, with the same jump cuts.
-    const cw = w * 1.18, ch = h * 1.18;
+    const cw = w * 1.3, ch = h * 1.3;
     const bottom = y + h / 2;
     return (
       <>
@@ -68,7 +68,7 @@ export const Speaker: React.FC<{ videoUrl: string; cutoutUrl?: string; segs: Seg
           </Sequence>
         ))}
         <div style={{ position: 'absolute', left: 360 - (w * 0.92) / 2, top: y - h * 0.05 - (w * 0.92) / 2, width: w * 0.92, height: w * 0.92, borderRadius: '50%', background: T.accent, boxShadow: `0 12px 44px ${T.accent}77`, opacity: 0.95 }} />
-        <div style={{ position: 'absolute', left: 360 - cw / 2, top: bottom - ch, width: cw, height: ch, filter: 'drop-shadow(0 18px 30px rgba(0,0,0,0.35))' }}>
+        <div style={{ position: 'absolute', left: 360 - cw / 2, top: bottom - ch, width: cw, height: ch, filter: `drop-shadow(0 0 14px ${T.accent}cc) drop-shadow(0 22px 34px rgba(0,0,0,0.38))` }}>
           {segs.map((s, i) => (
             <Sequence key={'v' + i} from={s.outFrame} durationInFrames={s.frames}>
               <OffthreadVideo src={cutoutUrl} transparent muted startFrom={Math.round(s.start * fps)} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 30%' }} />

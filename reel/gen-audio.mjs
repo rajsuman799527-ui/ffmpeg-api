@@ -3,6 +3,7 @@
 import { spawnSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { MOODS, renderTrack, writeWav } from './music.mjs';
 
 const out = process.argv[2] || 'public';
 const SECS = Number(process.argv[3] || 130);
@@ -39,6 +40,11 @@ const moods = {
   fresh: { bpm: 104, prog: [[60, 64, 67, 72], [57, 60, 64, 69], [53, 57, 60, 65], [55, 59, 62, 67]], pad: 0.3, pluck: 0.5, kick: 0.3, hat: 0.18, lp: 5000 },
   vintage: { bpm: 80, prog: [[55, 58, 62, 67], [51, 55, 58, 63], [53, 57, 60, 65], [50, 53, 57, 62]], pad: 0.35, pluck: 0.45, kick: 0, hat: 0, lp: 2200 },
 };
+for (const name of MOODS) {
+  if (ONLY !== 'all' && ONLY !== name) continue;
+  writeWav(join(out, 'music', `${name}.wav`), renderTrack(name, SECS));
+  console.log('music', name);
+}
 for (const [name, m] of Object.entries(moods)) {
   if (ONLY !== 'all' && ONLY !== name) continue;
   const beat = 60 / m.bpm, L = beat * 8, P = L * 4, step = beat / 2;

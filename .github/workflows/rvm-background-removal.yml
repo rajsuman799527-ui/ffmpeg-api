@@ -32,6 +32,10 @@ jobs:
           [[ "$JOB_ID" =~ ^[A-Za-z0-9_-]+$ ]] || { echo "bad job id"; exit 1; }
           [[ "$VIDEO_URL" =~ ^https:// ]] || { echo "Only HTTPS video URLs are allowed"; exit 1; }
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -58,7 +62,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-          python -m pip install opencv-python-headless numpy pillow tqdm
+          python -m pip install av opencv-python-headless numpy pillow tqdm
 
       - name: Run RVM on CPU
         run: |

@@ -1,25 +1,28 @@
 import React, { useMemo } from 'react';
-import { AbsoluteFill, Sequence, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Audio, Sequence, interpolate, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 import { ThemeCtx, getTheme } from '../theme';
 import { FONT } from '../ui';
 import { SceneBody, zoneFor } from '../scenes';
-import { Background, Brand, Captions, Speaker, type CapStyle, type FrameKind } from '../chrome';
-import { prepare, type PScene } from '../timeline';
+import { Background, Brand, CapGraphics, Captions, Speaker, VoiceOrb, type CapStyle, type FrameKind } from '../chrome';
+import { prepare, type PScene, type PCaption } from '../timeline';
 import { MusicLayer, SfxLayer } from '../common';
 
 type StudioPlan = {
   video: { width: number; height: number; fps: number };
   duration?: number;
+  mode?: 'video' | 'voice';
+  sfx?: boolean;
   brand?: { logoText?: string };
-  style?: { theme?: string; accent?: string; frame?: string; captions?: string };
+  style?: { theme?: string; accent?: string; frame?: string; captions?: string; currency?: string };
   music?: { track?: string; volume?: number } | null;
   cuts: { start: number; end: number; reason?: string }[];
   scenes: PScene[];
-  captions: { text: string; start: number; end: number }[];
+  captions: PCaption[];
 };
-export type StudioProps = { plan: StudioPlan; videoUrl: string; cutoutUrl?: string };
+export type StudioProps = { plan: StudioPlan; videoUrl: string; audioUrl?: string; cutoutUrl?: string };
 
 const EDGE = 8;
+const CAP_STYLES = ['strip', 'pop', 'bold', 'highlight', 'clean'];
 
 /** One scene: soft entrance and a clean exit. No scene ever jumps. */
 const SceneShell: React.FC<{ scene: PScene; dur: number }> = ({ scene, dur }) => {
@@ -40,12 +43,13 @@ const SceneShell: React.FC<{ scene: PScene; dur: number }> = ({ scene, dur }) =>
   );
 };
 
-export const Studio: React.FC<StudioProps> = ({ plan, videoUrl, cutoutUrl }) => {
+export const Studio: React.FC<StudioProps> = ({ plan, videoUrl, audioUrl, cutoutUrl }) => {
   const { fps } = useVideoConfig();
-  const prep = useMemo(() => prepare(plan, fps), [plan, fps]);
+  const voice = plan.mode === 'voice' || !videoUrl;
+  const prep = useMemo(() => prepare(voice ? { ...plan, cuts: [], duration: plan.duration || Math.max(1, ...plan.captions.map((c) => c.end), ...plan.scenes.map((s) => s.end)) } : plan, fps), [plan, fps, voice]);
   const theme = useMemo(() => getTheme(plan.style?.theme, plan.style?.accent), [plan]);
   const kind = (['circle', 'squircle', 'card'].includes(String(plan.style?.frame)) ? plan.style?.frame : 'circle') as FrameKind;
-  const capStyle = (plan.style?.captions === 'pop' ? 'pop' : 'strip') as CapStyle;
+  const capStyle = (CAP_STYLES.includes(String(plan.style?.captions)) ? plan.style?.captions : 'strip') as CapStyle;
   return (
     <ThemeCtx.Provider value={theme}>
       <AbsoluteFill style={{ fontFamily: FONT, background: theme.bg }}>
@@ -60,10 +64,21 @@ export const Studio: React.FC<StudioProps> = ({ plan, videoUrl, cutoutUrl }) => 
             </Sequence>
           );
         })}
-        <Speaker videoUrl={videoUrl} cutoutUrl={cutoutUrl} segs={prep.tl.segs} scenes={prep.scenes} kind={kind} />
+        {plan.sfx === false ? null : prep.scenes.slice(1).map((s, i) => (
+          <Sequence key={`sw${i}`} from={Math.max(0, Math.round(s.start * fps) - 3)} durationInFrames={30}><Audio src={staticFile('sfx/swish.wav')} volume={0.22} /></Sequence>
+        ))}
+        {voice ? (
+          <>
+            <VoiceOrb scenes={prep.scenes} />
+            {audioUrl ? <Audio src={audioUrl} /> : null}
+          </>
+        ) : (
+          <Speaker videoUrl={videoUrl} cutoutUrl={cutoutUrl} segs={prep.tl.segs} scenes={prep.scenes} kind={kind} />
+        )}
+        <CapGraphics captions={prep.captions} currency={plan.style?.currency ?? ''} />
         <Captions captions={prep.captions} style={capStyle} />
-        <SfxLayer plan={{ ...(plan as any), captions: prep.captions }} cfg={{ phrase: 'tick', vol: 0.28 }} />
-        {plan.music === null ? null : <MusicLayer track={plan.music?.track ?? 'warm'} volume={plan.music?.volume ?? 0.1} totalFrames={prep.tl.totalFrames} />}
+        {plan.sfx === false ? null : <SfxLayer plan={{ ...(plan as any), captions: prep.captions }} cfg={{ phrase: 'tick', emphasis: 'pop', vol: 0.24 }} />}
+        {plan.music === null ? null : <MusicLayer track={plan.music?.track ?? 'warm'} volume={plan.music?.volume ?? (voice ? 0.14 : 0.1)} totalFrames={prep.tl.totalFrames} />}
         <Brand text={plan.brand?.logoText ?? ''} totalFrames={prep.tl.totalFrames} />
       </AbsoluteFill>
     </ThemeCtx.Provider>

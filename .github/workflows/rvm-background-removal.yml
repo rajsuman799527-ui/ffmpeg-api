@@ -1,24 +1,36 @@
 name: RVM Video Background Removal
+# The run name carries the job id so the app can find this run.
+run-name: "rvm ${{ inputs.job_id }}"
 
 on:
   workflow_dispatch:
     inputs:
+      job_id:
+        description: "Job id from the app"
+        required: true
+        type: string
       video_url:
         description: "Public HTTPS URL of the input video"
         required: true
         type: string
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   remove-background:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
-      - name: Checkout app repository
-        uses: actions/checkout@v4
+      - name: Check inputs
+        env:
+          JOB_ID: ${{ inputs.job_id }}
+          VIDEO_URL: ${{ inputs.video_url }}
+        run: |
+          set -euo pipefail
+          [[ "$JOB_ID" =~ ^[A-Za-z0-9_-]+$ ]] || { echo "bad job id"; exit 1; }
+          [[ "$VIDEO_URL" =~ ^https:// ]] || { echo "Only HTTPS video URLs are allowed"; exit 1; }
 
       - name: Install system dependencies
         run: |
@@ -30,34 +42,23 @@ jobs:
         env:
           VIDEO_URL: ${{ inputs.video_url }}
         run: |
-          python - <<'PY'
-          import os
-          from urllib.parse import urlparse
-          u = urlparse(os.environ["VIDEO_URL"])
-          if u.scheme != "https" or not u.hostname:
-              raise SystemExit("Only HTTPS video URLs are allowed")
-          PY
           curl --fail --location --silent --show-error \
             --max-filesize 100000000 \
-            "$VIDEO_URL" -o input.mp4
-          test -s input.mp4
-          ffprobe -v error -show_entries format=duration \
-            -of default=noprint_wrappers=1:nokey=1 input.mp4
+            "$VIDEO_URL" -o source.mp4
+          test -s source.mp4
+          # Work at most 720 pixels wide: same look, much faster on CPU.
+          ffmpeg -y -v error -i source.mp4 -vf "scale='min(720,iw)':-2" -c:v libx264 -preset veryfast -crf 18 -an input.mp4
+          ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 input.mp4
 
       - name: Get RVM model
         run: |
-          git clone --depth 1 \
-            https://github.com/PeterL1n/RobustVideoMatting.git rvm
-          curl -L --fail \
-            https://github.com/PeterL1n/RobustVideoMatting/releases/download/v1.0.0/rvm_mobilenetv3.pth \
-            -o rvm/rvm_mobilenetv3.pth
+          git clone --depth 1 https://github.com/PeterL1n/RobustVideoMatting.git rvm
+          curl -L --fail https://github.com/PeterL1n/RobustVideoMatting/releases/download/v1.0.0/rvm_mobilenetv3.pth -o rvm/rvm_mobilenetv3.pth
 
       - name: Install Python dependencies
         run: |
-          python -m pip install torch torchvision
-          python -m pip install \
-            opencv-python-headless \
-            numpy pillow tqdm
+          python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install opencv-python-headless numpy pillow tqdm
 
       - name: Run RVM on CPU
         run: |
@@ -68,29 +69,22 @@ jobs:
             --device cpu \
             --input-source ../input.mp4 \
             --output-type video \
-            --output-composition ../preview_green.mp4 \
             --output-alpha ../alpha.mp4 \
             --output-foreground ../foreground.mp4 \
             --seq-chunk 1
 
       - name: Create transparent WebM
         run: |
-          ffmpeg -y \
-            -i foreground.mp4 \
-            -i alpha.mp4 \
-            -filter_complex \
-            "[0:v][1:v]alphamerge,format=yuva420p[out]" \
-            -map "[out]" -an \
-            -c:v libvpx-vp9 -pix_fmt yuva420p \
+          ffmpeg -y -v error -i foreground.mp4 -i alpha.mp4 \
+            -filter_complex "[0:v][1:v]alphamerge,format=yuva420p[out]" \
+            -map "[out]" -an -c:v libvpx-vp9 -pix_fmt yuva420p -b:v 0 -crf 32 -row-mt 1 \
             transparent.webm
+          ls -la transparent.webm
 
-      - name: Upload results
-        uses: actions/upload-artifact@v4
-        with:
-          name: rvm-background-removal-results
-          path: |
-            transparent.webm
-            preview_green.mp4
-            alpha.mp4
-          retention-days: 3
-          
+      - name: Publish as a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_ID: ${{ inputs.job_id }}
+        run: |
+          gh release create "cut-$JOB_ID" transparent.webm --repo "$GITHUB_REPOSITORY" \
+            --title "cut-$JOB_ID" --notes "Background removed by Reel Studio. Safe to delete after saving."

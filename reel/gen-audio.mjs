@@ -28,6 +28,8 @@ const sfx = {
   hit: { src: `aevalsrc='sin(2*PI*(48+90*exp(-t*14))*t)*exp(-t*5.5)+0.5*random(0)*exp(-t*30)':d=1.0:s=44100`, af: `lowpass=f=2400,volume=1.1,aecho=0.6:0.5:70:0.3` },
   riser: { src: `aevalsrc='random(0)*pow(t/2.2,2.2)*0.8':d=2.2:s=44100`, af: `bandpass=f=2500:w=3,afade=t=out:st=2.0:d=0.2,volume=3` },
   coin: { src: `aevalsrc='sin(2*PI*1568*t)*exp(-t*14)*lt(t,0.09)+sin(2*PI*2093*t)*exp(-t*8)*gte(t,0.09)':d=0.9:s=44100`, af: `volume=2,aecho=0.6:0.4:60:0.25` },
+  glass: { src: `aevalsrc='(sin(2*PI*2093*t)*exp(-t*9)+0.6*sin(2*PI*3136*t)*exp(-t*13)+0.3*sin(2*PI*4186*t)*exp(-t*18))*0.55':d=0.9:s=44100`, af: `volume=1.6,aecho=0.5:0.4:45|90:0.3|0.15` },
+  count: { src: `aevalsrc='(0.5*random(0)+0.5*sin(2*PI*2400*t))*exp(-mod(t,0.07)*180)*lt(t,0.9)':d=1.0:s=44100`, af: `highpass=f=1200,volume=1.1` },
   swell: { src: `aevalsrc='(sin(2*PI*220*t)+sin(2*PI*277.2*t)+sin(2*PI*329.6*t))*0.25*sin(PI*t/1.6)':d=1.6:s=44100`, af: `volume=2.5,aecho=0.6:0.5:80|160:0.3|0.2` },
 };
 for (const [name, s] of Object.entries(sfx)) run(['-f', 'lavfi', '-i', s.src, '-af', `${s.af},${FMT}`, '-ar', '44100', join(out, 'sfx', `${name}.wav`)]);

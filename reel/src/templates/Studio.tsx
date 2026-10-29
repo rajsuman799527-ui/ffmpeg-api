@@ -8,6 +8,7 @@ import { prepare, type PScene, type PCaption } from '../timeline';
 import { MusicLayer, SfxLayer } from '../common';
 import { BeatCtx, BeatGlow, BeatScope, TRACK_BPM, snapFrame } from '../beat';
 import { cuesFor } from '../cues';
+import { GLASS_SPEED } from '../glass';
 
 type StudioPlan = {
   video: { width: number; height: number; fps: number };
@@ -88,8 +89,8 @@ export const Studio: React.FC<StudioProps> = ({ plan, videoUrl, audioUrl, cutout
         {plan.sfx === false ? null : prep.scenes.map((s, i) => {
           const from = Math.round(s.start * fps);
           const to = i === prep.scenes.length - 1 ? prep.tl.totalFrames : Math.round(s.end * fps);
-          return cuesFor(s.scene_type, (s.graphic as any)?.items).filter((q) => q.f < to - from - 4).map((q, k) => (
-            <Sequence key={`cue${i}-${k}`} from={snapFrame(from + q.f, bpm, fps)} durationInFrames={70}><Audio src={staticFile(`sfx/${q.sfx}.wav`)} volume={q.vol} /></Sequence>
+          return cuesFor(s.scene_type, (s.graphic as any)?.items).filter((q) => q.f / GLASS_SPEED < to - from - 4).map((q, k) => (
+            <Sequence key={`cue${i}-${k}`} from={snapFrame(from + Math.round(q.f / GLASS_SPEED), bpm, fps)} durationInFrames={70}><Audio src={staticFile(`sfx/${q.sfx}.wav`)} volume={q.vol} /></Sequence>
           ));
         })}
         {voice ? (

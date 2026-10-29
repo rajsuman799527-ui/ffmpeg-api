@@ -41,7 +41,7 @@ export const KText: React.FC<{
             <span style={{
               position: 'relative', display: 'inline-block', opacity: o,
               transform: `translateY(${(1 - p) * 105}%) rotate(${(1 - p) * 4}deg) scale(${0.92 + 0.08 * Math.min(1.1, p)})`, transformOrigin: 'left bottom', filter: blur > 0.3 ? `blur(${blur}px)` : undefined,
-              ...(isHi ? { backgroundImage: `linear-gradient(100deg, ${ink} 0%, ${ink} 30%, ${T.accent} 46%, #fff 52%, ${T.accent} 58%, ${ink} 74%, ${ink} 100%)`, backgroundSize: '260% 100%', backgroundPosition: `${100 - Math.max(0, Math.min(1, sweep)) * 100}% 0`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', WebkitTextFillColor: 'transparent', filter: `drop-shadow(0 0 ${Math.round(size * 0.16)}px ${T.accent}77)${blur > 0.3 ? ` blur(${blur}px)` : ''}` } : {}),
+              ...(isHi && T.dark ? { backgroundImage: `linear-gradient(100deg, ${ink} 0%, ${ink} 30%, ${T.accent} 46%, #fff 52%, ${T.accent} 58%, ${ink} 74%, ${ink} 100%)`, backgroundSize: '260% 100%', backgroundPosition: `${100 - Math.max(0, Math.min(1, sweep)) * 100}% 0`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', WebkitTextFillColor: 'transparent', filter: `drop-shadow(0 0 ${Math.round(size * 0.16)}px ${T.accent}77)${blur > 0.3 ? ` blur(${blur}px)` : ''}` } : {}),
             }}>{w}</span>
           </span>
         );
@@ -51,9 +51,9 @@ export const KText: React.FC<{
 };
 
 /** Caption with each word popping on its own spoken time; the key word is lit with a highlighter chip. */
-export const WordCaption: React.FC<{ cap: PCaption; size: number; color?: string; fontFamily?: string }> = ({ cap, size, color = '#fff', fontFamily = FONT }) => {
+export const WordCaption: React.FC<{ cap: PCaption; size: number; color?: string; fontFamily?: string; offset?: number }> = ({ cap, size, color = '#fff', fontFamily = FONT, offset = 0 }) => {
   const T = useTheme();
-  const frame = useCurrentFrame();
+  const frame = useCurrentFrame() + offset;
   const { fps } = useVideoConfig();
   const words = cap.words && cap.words.length ? cap.words.map((w) => ({ t: w.t, s: w.s })) : cap.text.split(/\s+/).filter(Boolean).map((t, i, a) => ({ t, s: cap.start + ((cap.end - cap.start) * i) / Math.max(1, a.length) * 0.8 }));
   const emph = typeof cap.emphasis === 'number' && cap.emphasis >= 0 && cap.emphasis < words.length ? cap.emphasis : -1;

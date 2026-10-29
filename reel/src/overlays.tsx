@@ -3,6 +3,7 @@ import { Img, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remot
 import { emoji3dSrc } from './emoji3d';
 import { FONT, Icon, clamp01 } from './ui';
 import { useTheme } from './theme';
+import { KText } from './ktext';
 
 const EMOJI_FONT = '"Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
 const CL = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as const;
@@ -41,7 +42,7 @@ export const HookIntro: React.FC<{ text: string }> = ({ text }) => {
   return (
     <div style={{ position: 'absolute', inset: 0, opacity: outP, backdropFilter: 'blur(' + blur + 'px)', WebkitBackdropFilter: 'blur(' + blur + 'px)', background: T.dark ? 'rgba(5,5,12,0.55)' : 'rgba(255,255,255,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 54px' }}>
       <div style={{ textAlign: 'center', transform: 'scale(' + (0.8 + 0.2 * inP) + ') translateY(' + (1 - inP) * 40 + 'px)' }}>
-        <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: text.length > 28 ? 78 : 96, lineHeight: 1.05, color: T.ink, letterSpacing: -1.5 }}>{text}</div>
+        <KText text={text} size={text.length > 28 ? 80 : 100} weight={800} delay={3} step={4} />
         <div style={{ height: 14, width: clamp01((frame - 8) / 16) * 70 + '%', margin: '22px auto 0', borderRadius: 10, background: T.accent, boxShadow: '0 0 28px ' + T.accent }} />
       </div>
     </div>
@@ -63,7 +64,7 @@ export const EndCard: React.FC<{ text: string; brand: string; totalFrames: numbe
         <div style={{ width: 128, height: 128, margin: '0 auto 22px', borderRadius: 40, background: 'linear-gradient(145deg, ' + T.accent + ', ' + T.accent + 'aa)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 16px 40px ' + T.accent + '88', transform: 'rotate(' + shake + 'deg)' }}>
           <Icon name="bell" size={72} color={T.onAccent} stroke={2.2} />
         </div>
-        <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 64, lineHeight: 1.08, color: T.ink }}>{text}</div>
+        <KText text={text} size={64} weight={800} delay={6} step={4} />
         {brand && brand !== 'Studio' ? <div style={{ display: 'inline-block', marginTop: 22, fontFamily: FONT, fontWeight: 800, fontSize: 32, padding: '10px 30px', borderRadius: 999, background: T.pillBg, color: T.pillFg }}>{brand}</div> : null}
       </div>
     </div>

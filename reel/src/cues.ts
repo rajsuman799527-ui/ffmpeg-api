@@ -13,6 +13,8 @@ export const cuesFor = (type: string, items: string[] = []): Cue[] => {
     case 'glass_quote': return [{ f: 12, sfx: 'glass', vol: 0.22 }];
     case 'glass_compare': return [{ f: 6, sfx: 'pop', vol: 0.2 }, { f: 14, sfx: 'pop', vol: 0.2 }, { f: 24, sfx: 'hit', vol: 0.2 }];
     case 'glass_icon': return [{ f: 8, sfx: 'pop', vol: 0.22 }, { f: 16, sfx: 'glass', vol: 0.18 }];
+    case 'photo_stack': return [{ f: 0, sfx: 'whoosh', vol: 0.16 }, { f: 7, sfx: 'glass', vol: 0.16 }, { f: 14, sfx: 'glass', vol: 0.16 }];
+    case 'photo_wide': return [{ f: 0, sfx: 'whoosh', vol: 0.16 }, { f: 14, sfx: 'glass', vol: 0.18 }];
     case 'photo_3d': return [{ f: 0, sfx: 'whoosh', vol: 0.16 }];
     default: return [];
   }

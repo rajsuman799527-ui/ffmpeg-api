@@ -10,7 +10,7 @@ type SP = { g: G; anim: string; frame: number; fps: number; dur: number };
 /** Glass animations run this much faster than the raw frame counter (1 = original). Sound cues in Studio use the same number. */
 export const GLASS_SPEED = 1.4;
 
-export const GLASS_TYPES = ['glass_stat', 'glass_list', 'glass_orbs', 'glass_quote', 'glass_compare', 'glass_steps', 'glass_chart', 'glass_icon', 'glass_tags', 'photo_3d', 'photo_stack', 'photo_wide'];
+export const GLASS_TYPES = ['glass_stat', 'glass_list', 'glass_orbs', 'glass_quote', 'glass_compare', 'glass_steps', 'glass_chart', 'glass_icon', 'glass_tags', 'photo_3d', 'photo_stack', 'photo_wide', 'glass_price', 'glass_rating', 'glass_phone', 'glass_ring', 'glass_pin'];
 
 const ease = (t: number) => 1 - Math.pow(1 - clamp01(t), 3);
 const seg = (frame: number, a: number, b: number) => ease((frame - a) / (b - a));
@@ -386,6 +386,157 @@ const PhotoWide: React.FC<SP> = (p) => {
   );
 };
 
+/* ---------- 13. Price / discount badge ---------- */
+const GlassPrice: React.FC<SP> = ({ g, frame, fps }) => {
+  const T = useTheme(); const b = useBeat();
+  const p = spr(frame, fps, 4, 9, 120);
+  const t = spr(frame, fps, 16);
+  const n = hasNum(g) ? Number(g.number) : 0;
+  const shown = Math.round(n * ease((frame - 8) / 30));
+  const burst = Array.from({ length: 12 });
+  return (
+    <Stage frame={frame}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 26 }}>
+        <div style={{ position: 'relative', width: 330, height: 330, display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'scale(' + p * (1 + 0.03 * b.pulse) + ') rotate(' + (-8 + (1 - p) * 40) + 'deg)' }}>
+          {burst.map((_, i) => (
+            <div key={i} style={{ position: 'absolute', width: 40, height: 330, borderRadius: 20, transform: 'rotate(' + i * 30 + 'deg)', background: 'linear-gradient(180deg, ' + T.accent + 'ee 0 22%, transparent 22%)' }} />
+          ))}
+          <div style={{ ...glassStyle(T, 999, 10), width: 270, height: 270, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(145deg, ' + T.accent + ', ' + T.accent + 'bb)', border: '2px solid rgba(255,255,255,0.7)' }}>
+            <Sheen frame={frame} start={16} len={36} strength={0.5} />
+            <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: String(shown).length > 3 ? 84 : 112, lineHeight: 1, color: T.onAccent, letterSpacing: -2 }}>{g.prefix || ''}{shown}{g.suffix || ''}</div>
+            {g.label ? <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 34, color: T.onAccent, opacity: 0.9, marginTop: 6 }}>{g.label}</div> : null}
+          </div>
+        </div>
+        <div style={{ ...glassStyle(T, 40, 20), padding: '16px 34px', opacity: clamp01(t * 1.4), transform: 'translateY(' + (1 - t) * 30 + 'px)' }}>
+          <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 42, color: T.ink, textAlign: 'center', maxWidth: 520 }}>{g.text || ''}</div>
+        </div>
+      </div>
+    </Stage>
+  );
+};
+
+/* ---------- 14. Rating: stars fill one by one, review card ---------- */
+const GlassRating: React.FC<SP> = ({ g, frame, fps }) => {
+  const T = useTheme(); const b = useBeat();
+  const score = hasNum(g) ? Math.min(5, Number(g.number)) : 5;
+  const card = spr(frame, fps, 2, 12, 130);
+  const shown = (score * ease((frame - 6) / 30)).toFixed(1);
+  const star = 'M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z';
+  return (
+    <Stage frame={frame}>
+      <div style={{ ...glassStyle(T, 52, 26), width: 590, padding: '40px 40px 36px', textAlign: 'center', transform: 'translateY(' + (1 - card) * 60 + 'px) scale(' + (0.9 + 0.1 * card) * (1 + 0.015 * b.pulse) + ')', opacity: clamp01(card * 1.5) }}>
+        <Sheen frame={frame} start={20} len={40} />
+        <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 120, lineHeight: 1, color: T.ink, letterSpacing: -3 }}>{shown}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 10, margin: '16px 0 22px' }}>
+          {[0, 1, 2, 3, 4].map((i) => {
+            const k = spr(frame, fps, 8 + i * 5, 7, 200);
+            const on = i < Math.round(score);
+            return (
+              <svg key={i} width={74} height={74} viewBox="0 0 24 24" style={{ transform: 'scale(' + (0.4 + 0.6 * k) + ') rotate(' + (1 - k) * -40 + 'deg)', filter: on ? 'drop-shadow(0 6px 10px ' + T.accent + '88)' : 'none' }}>
+                <path d={star} fill={on ? T.accent : 'rgba(150,150,170,0.35)'} stroke={on ? 'rgba(255,255,255,0.8)' : 'none'} strokeWidth={0.6} strokeLinejoin="round" />
+              </svg>
+            );
+          })}
+        </div>
+        <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 38, lineHeight: 1.2, color: T.ink, opacity: clamp01((frame - 30) / 10) }}>{g.text ? '“' + g.text + '”' : ''}</div>
+        {g.label ? <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 28, color: T.sub, marginTop: 12, opacity: clamp01((frame - 36) / 10) }}>{g.label}</div> : null}
+      </div>
+    </Stage>
+  );
+};
+
+/* ---------- 15. Phone mockup: screen shows the AI photo or app rows ---------- */
+const GlassPhone: React.FC<SP> = ({ g, frame, fps }) => {
+  const T = useTheme(); const b = useBeat();
+  const p = spr(frame, fps, 2, 12, 110);
+  const rows = (g.items && g.items.length ? g.items : ['New idea', 'Script ready', 'Posted']).slice(0, 4);
+  const icons = g.icons && g.icons.length ? g.icons : ['bolt', 'check', 'star', 'heart'];
+  const tb = spr(frame, fps, 18, 10, 150);
+  return (
+    <Stage frame={frame}>
+      <div style={{ perspective: 1100 }}>
+        <div style={{ width: 300, height: 540, borderRadius: 54, padding: 11, background: T.dark ? 'linear-gradient(145deg,#4a4a5a,#15151d)' : 'linear-gradient(145deg,#ffffff,#b9bccb)', boxShadow: '0 40px 70px rgba(0,0,0,0.38), inset 0 2px 0 rgba(255,255,255,0.7)', transform: 'translateY(' + ((1 - p) * 90 + Math.sin(frame / 30) * 8) + 'px) rotateY(' + (-16 + Math.sin(frame / 36) * 7) + 'deg) rotateX(' + (6 + Math.cos(frame / 40) * 3) + 'deg) scale(' + p * (1 + 0.015 * b.pulse) + ')', opacity: clamp01(p * 1.6) }}>
+          <div style={{ position: 'relative', width: '100%', height: '100%', borderRadius: 44, overflow: 'hidden', background: T.dark ? '#0b0b14' : '#f4f5fb' }}>
+            {g.image ? <Img src={g.image} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: 'scale(' + (1.05 + frame * 0.0007) + ')' }} /> : (
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(160deg, ' + T.accent + '55, transparent 60%)', padding: '70px 18px 0' }}>
+                {rows.map((r, i) => {
+                  const k = spr(frame, fps, 12 + i * 8, 11, 150);
+                  return (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', marginBottom: 14, borderRadius: 22, background: T.dark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.9)', boxShadow: '0 8px 18px rgba(0,0,0,0.12)', transform: 'translateX(' + (1 - k) * 80 + 'px)', opacity: clamp01(k * 1.5) }}>
+                      <IconTile name={icons[i % icons.length]} size={44} />
+                      <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 25, color: T.ink, lineHeight: 1.1 }}>{r}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <div style={{ position: 'absolute', top: 12, left: '50%', width: 92, height: 26, marginLeft: -46, borderRadius: 20, background: '#05050a' }} />
+            <Sheen frame={frame} start={22} len={36} strength={0.28} />
+          </div>
+        </div>
+      </div>
+      {g.text ? (
+        <div style={{ ...glassStyle(T, 34, 18), position: 'absolute', right: 20, top: 150, maxWidth: 270, padding: '16px 22px', transform: 'translateX(' + (1 - tb) * 120 + 'px) scale(' + (0.85 + 0.15 * tb) + ')', opacity: clamp01(tb * 1.5) }}>
+          <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 32, lineHeight: 1.1, color: T.ink }}>{g.text}</div>
+        </div>
+      ) : null}
+    </Stage>
+  );
+};
+
+/* ---------- 16. Progress ring ---------- */
+const GlassRing: React.FC<SP> = ({ g, frame, fps }) => {
+  const T = useTheme(); const b = useBeat();
+  const pct = hasNum(g) ? Math.max(0, Math.min(100, Number(g.number))) : 75;
+  const k = ease((frame - 6) / 42);
+  const R = 150; const C = 2 * Math.PI * R;
+  const p = spr(frame, fps, 2, 12, 120);
+  const t = spr(frame, fps, 16);
+  return (
+    <Stage frame={frame}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 26 }}>
+        <div style={{ ...glassStyle(T, 999, 20), width: 400, height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'scale(' + p * (1 + 0.02 * b.pulse) + ')' }}>
+          <svg width={400} height={400} viewBox="0 0 400 400" style={{ position: 'absolute', transform: 'rotate(-90deg)' }}>
+            <circle cx={200} cy={200} r={R} fill="none" stroke="rgba(150,150,170,0.25)" strokeWidth={28} />
+            <circle cx={200} cy={200} r={R} fill="none" stroke={T.accent} strokeWidth={28} strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - (pct / 100) * k)} style={{ filter: 'drop-shadow(0 0 14px ' + T.accent + ')' }} />
+          </svg>
+          <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 118, color: T.ink, letterSpacing: -3 }}>{Math.round(pct * k)}<span style={{ fontSize: 56 }}>{g.suffix ?? '%'}</span></div>
+        </div>
+        <div style={{ textAlign: 'center', opacity: clamp01(t * 1.4), transform: 'translateY(' + (1 - t) * 24 + 'px)' }}>
+          <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 48, color: T.ink, maxWidth: 560, lineHeight: 1.1 }}>{g.text || ''}</div>
+          {g.label ? <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 28, color: T.sub, marginTop: 8 }}>{g.label}</div> : null}
+        </div>
+      </div>
+    </Stage>
+  );
+};
+
+/* ---------- 17. Map pin: pin drops onto a glass map, ripples, label card ---------- */
+const GlassPin: React.FC<SP> = ({ g, frame, fps }) => {
+  const T = useTheme();
+  const map = spr(frame, fps, 0, 14, 120);
+  const drop = spr(frame, fps, 10, 7, 170);
+  const t = spr(frame, fps, 24);
+  const rip = (d: number) => { const q = ((frame - 20 - d) % 46) / 46; return frame > 20 + d ? q : -1; };
+  const line = T.dark ? 'rgba(255,255,255,0.10)' : 'rgba(40,40,70,0.10)';
+  return (
+    <Stage frame={frame}>
+      <div style={{ ...glassStyle(T, 46, 22), width: 600, height: 400, transform: 'scale(' + (0.9 + 0.1 * map) + ') rotateX(' + (14 - 8 * map) + 'deg)', opacity: clamp01(map * 1.5) }}>
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(' + line + ' 2px, transparent 2px), linear-gradient(90deg, ' + line + ' 2px, transparent 2px)', backgroundSize: '60px 60px', backgroundPosition: -frame * 0.4 + 'px 0' }} />
+        <svg width={600} height={400} style={{ position: 'absolute', inset: 0 }}><path d="M-10 290 C 120 220, 200 330, 320 250 S 520 150, 620 190" fill="none" stroke={T.accent} strokeWidth={9} strokeLinecap="round" opacity={0.55} strokeDasharray="22 16" /></svg>
+        {[0, 14].map((d) => { const q = rip(d); return q < 0 ? null : <div key={d} style={{ position: 'absolute', left: 210, top: 160, width: 180, height: 180, borderRadius: '50%', border: '4px solid ' + T.accent, opacity: 1 - q, transform: 'scale(' + (0.2 + q * 1.1) + ')' }} />; })}
+        <div style={{ position: 'absolute', left: 254, top: 120 - (1 - drop) * 220, width: 92, height: 130, opacity: clamp01(drop * 3), filter: 'drop-shadow(0 14px 14px ' + T.accent + '88)' }}>
+          <svg width={92} height={130} viewBox="0 0 24 34"><path d="M12 1C6 1 1.5 5.4 1.5 11c0 7.5 10.5 21 10.5 21s10.5-13.5 10.5-21C22.5 5.4 18 1 12 1z" fill={T.accent} stroke="rgba(255,255,255,0.85)" strokeWidth={1} /><circle cx={12} cy={11} r={4.3} fill={T.onAccent} /></svg>
+        </div>
+      </div>
+      <div style={{ ...glassStyle(T, 38, 20), position: 'absolute', bottom: 22, padding: '16px 34px', transform: 'translateY(' + (1 - t) * 40 + 'px)', opacity: clamp01(t * 1.5) }}>
+        <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 44, color: T.ink, textAlign: 'center' }}>{g.text || ''}</div>
+        {g.label ? <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 26, color: T.sub, textAlign: 'center' }}>{g.label}</div> : null}
+      </div>
+    </Stage>
+  );
+};
+
 export const GlassBody: React.FC<SP & { type: string }> = (p0) => {
   const p = { ...p0, frame: p0.frame * GLASS_SPEED, dur: p0.dur * GLASS_SPEED };
   switch (p.type) {
@@ -401,6 +552,11 @@ export const GlassBody: React.FC<SP & { type: string }> = (p0) => {
     case 'photo_3d': return <Photo3D {...p} />;
     case 'photo_stack': return <PhotoStack {...p} />;
     case 'photo_wide': return <PhotoWide {...p} />;
+    case 'glass_price': return <GlassPrice {...p} />;
+    case 'glass_rating': return <GlassRating {...p} />;
+    case 'glass_phone': return <GlassPhone {...p} />;
+    case 'glass_ring': return <GlassRing {...p} />;
+    case 'glass_pin': return <GlassPin {...p} />;
     default: return null;
   }
 };

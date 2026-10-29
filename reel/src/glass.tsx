@@ -7,7 +7,7 @@ import type { G } from './scenes';
 
 type SP = { g: G; anim: string; frame: number; fps: number; dur: number };
 
-export const GLASS_TYPES = ['glass_stat', 'glass_list', 'glass_orbs', 'glass_quote', 'glass_compare', 'glass_steps', 'glass_chart', 'glass_icon', 'glass_tags', 'photo_3d'];
+export const GLASS_TYPES = ['glass_stat', 'glass_list', 'glass_orbs', 'glass_quote', 'glass_compare', 'glass_steps', 'glass_chart', 'glass_icon', 'glass_tags', 'photo_3d', 'photo_stack', 'photo_wide'];
 
 const ease = (t: number) => 1 - Math.pow(1 - clamp01(t), 3);
 const seg = (frame: number, a: number, b: number) => ease((frame - a) / (b - a));
@@ -319,6 +319,70 @@ const Photo3D: React.FC<SP> = (p) => {
   );
 };
 
+/* ---------- 11. Photo stack: three AI pictures fanned in 3D, drifting and breathing ---------- */
+const PhotoStack: React.FC<SP> = (p) => {
+  const { g, frame, fps } = p;
+  const T = useTheme();
+  const imgs = ((g as any).images && (g as any).images.length ? (g as any).images : g.image ? [g.image] : []).slice(0, 3) as string[];
+  if (!imgs.length) return <GlassIcon {...p} />;
+  const slots = [{ x: -150, r: -13, z: 0, y: 24 }, { x: 150, r: 13, z: 0, y: 24 }, { x: 0, r: 0, z: 70, y: -8 }];
+  const spin = Math.sin(frame / 50) * 9;
+  const cap = spr(frame, fps, 18);
+  return (
+    <Stage frame={frame}>
+      <div style={{ perspective: 1500, position: 'relative', width: 620, height: 470 }}>
+        {imgs.map((src, i) => {
+          const order = imgs.length === 1 ? 2 : imgs.length === 2 ? (i === 0 ? 0 : 2) : i;
+          const s = slots[order];
+          const d = spr(frame, fps, i * 7, 15, 120);
+          return (
+            <div key={i} style={{ position: 'absolute', left: '50%', top: '50%', width: 290, height: 390, marginLeft: -145, marginTop: -205, zIndex: order, opacity: clamp01(d * 1.4), transformStyle: 'preserve-3d', transform: 'translateX(' + s.x * d + 'px) translateY(' + (s.y + (1 - d) * 70 + Math.sin(frame / 38 + i * 2) * 9) + 'px) translateZ(' + s.z + 'px) rotateY(' + (-s.r * 1.4 + spin * (order - 1) * 0.5) + 'deg) rotateZ(' + s.r * d + 'deg) scale(' + (0.85 + 0.15 * d) + ')', borderRadius: 36, overflow: 'hidden', border: '2px solid rgba(255,255,255,0.65)', boxShadow: '0 36px 60px rgba(0,0,0,0.4), 0 0 50px ' + T.accent + '44' }}>
+              <Img src={src} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scale(' + (1.1 + frame * 0.0012) + ') translateX(' + Math.sin(frame / 55 + i) * 8 + 'px)' }} />
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(160deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 40%, rgba(0,0,0,0.25) 100%)' }} />
+              <Sheen frame={frame} start={12 + i * 6} len={40} strength={0.3} />
+            </div>
+          );
+        })}
+        {g.text ? (
+          <div style={{ ...glassStyle(T, 28, 18), position: 'absolute', left: 90, right: 90, bottom: -6, zIndex: 9, padding: '12px 18px', textAlign: 'center', opacity: clamp01(cap * 1.4), transform: 'translateY(' + (1 - cap) * 30 + 'px)' }}>
+            <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 32, color: T.ink, lineHeight: 1.15 }}>{g.text}</div>
+          </div>
+        ) : null}
+      </div>
+    </Stage>
+  );
+};
+
+/* ---------- 12. Photo wide: a cinematic picture with a slow camera pan, floating glass chips and a caption ---------- */
+const PhotoWide: React.FC<SP> = (p) => {
+  const { g, frame, fps } = p;
+  const T = useTheme();
+  if (!g.image) return <GlassIcon {...p} />;
+  const e = spr(frame, fps, 0, 16, 110);
+  const cap = spr(frame, fps, 12);
+  const chips = (g.items || []).slice(0, 3);
+  return (
+    <Stage frame={frame}>
+      <div style={{ position: 'relative', width: 620, height: 430, opacity: clamp01(e * 1.4), transform: 'translateY(' + (1 - e) * 50 + 'px) scale(' + (0.92 + 0.08 * e) + ') rotateZ(' + Math.sin(frame / 70) * 0.6 + 'deg)' }}>
+        <div style={{ position: 'absolute', inset: 0, borderRadius: 46, overflow: 'hidden', border: '2px solid rgba(255,255,255,0.65)', boxShadow: '0 40px 70px rgba(0,0,0,0.4), 0 0 60px ' + T.accent + '55' }}>
+          <Img src={g.image} style={{ width: '112%', height: '112%', objectFit: 'cover', transform: 'translate(' + (-frame * 0.11) + 'px, ' + (-frame * 0.05) + 'px) scale(' + (1.06 + frame * 0.0015) + ')' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0) 35%, rgba(0,0,0,0.42) 100%)' }} />
+          <Sheen frame={frame} start={10} len={46} strength={0.34} />
+        </div>
+        {chips.map((c, i) => {
+          const d = spr(frame, fps, 14 + i * 7);
+          return <div key={i} style={{ ...glassStyle(T, 999, 14), position: 'absolute', top: 24 + i * 58, left: i % 2 ? undefined : 22, right: i % 2 ? 22 : undefined, padding: '8px 22px', fontFamily: FONT, fontWeight: 800, fontSize: 26, color: T.ink, opacity: clamp01(d * 1.4), transform: 'translateY(' + ((1 - d) * 24 + Math.sin(frame / 30 + i * 2) * 5) + 'px)' }}>{c}</div>;
+        })}
+        {g.text ? (
+          <div style={{ ...glassStyle(T, 30, 18), position: 'absolute', left: 26, right: 26, bottom: 24, padding: '14px 22px', textAlign: 'center', opacity: clamp01(cap * 1.4), transform: 'translateY(' + (1 - cap) * 28 + 'px)' }}>
+            <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 36, color: T.ink, lineHeight: 1.15 }}>{g.text}</div>
+          </div>
+        ) : null}
+      </div>
+    </Stage>
+  );
+};
+
 export const GlassBody: React.FC<SP & { type: string }> = (p) => {
   switch (p.type) {
     case 'glass_stat': return <GlassStat {...p} />;
@@ -331,6 +395,8 @@ export const GlassBody: React.FC<SP & { type: string }> = (p) => {
     case 'glass_icon': return <GlassIcon {...p} />;
     case 'glass_tags': return <GlassTags {...p} />;
     case 'photo_3d': return <Photo3D {...p} />;
+    case 'photo_stack': return <PhotoStack {...p} />;
+    case 'photo_wide': return <PhotoWide {...p} />;
     default: return null;
   }
 };

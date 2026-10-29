@@ -8,6 +8,7 @@ import { prepare, type PScene, type PCaption } from '../timeline';
 import { MusicLayer, SfxLayer } from '../common';
 import { BeatCtx, BeatGlow, BeatScope, TRACK_BPM, snapFrame } from '../beat';
 import { cuesFor } from '../cues';
+import { EmojiPops, EndCard, HookIntro, SceneWipe } from '../overlays';
 import { GLASS_SPEED } from '../glass';
 
 type StudioPlan = {
@@ -16,6 +17,7 @@ type StudioPlan = {
   mode?: 'video' | 'voice';
   tracks?: { url: string; start: number }[];
   sfx?: boolean;
+  hook?: string; cta?: string; pops?: { t: number; emoji: string }[];
   brand?: { logoText?: string };
   style?: { theme?: string; accent?: string; frame?: string; captions?: string; currency?: string };
   music?: { track?: string; volume?: number } | null;
@@ -107,7 +109,13 @@ export const Studio: React.FC<StudioProps> = ({ plan, videoUrl, audioUrl, cutout
         <Captions captions={prep.captions} style={capStyle} />
         {plan.sfx === false ? null : <SfxLayer plan={{ ...(plan as any), captions: prep.captions }} cfg={{ phrase: 'tick', emphasis: 'pop', vol: 0.24 }} />}
         {plan.music === null ? null : <MusicLayer track={plan.music?.track ?? 'warm'} volume={plan.music?.volume ?? (voice ? 0.14 : 0.1)} totalFrames={prep.tl.totalFrames} duck={duck} />}
+        <SceneWipe starts={prep.scenes.slice(1).map((sc) => Math.round(sc.start * fps))} />
+        <EmojiPops pops={(plan.pops ?? []).map((p) => ({ f: Math.round(prep.tl.mapT(p.t) * fps), emoji: p.emoji }))} />
         <Brand text={plan.brand?.logoText ?? ''} totalFrames={prep.tl.totalFrames} />
+        {plan.hook ? <HookIntro text={plan.hook} /> : null}
+        <EndCard text={plan.cta ?? ''} brand={plan.brand?.logoText ?? ''} totalFrames={prep.tl.totalFrames} />
+        {plan.sfx === false ? null : plan.hook ? <Sequence from={0} durationInFrames={50}><Audio src={staticFile('sfx/whoosh.wav')} volume={0.12} /></Sequence> : null}
+        {plan.sfx === false || !plan.cta ? null : <Sequence from={Math.max(0, prep.tl.totalFrames - 72)} durationInFrames={60}><Audio src={staticFile('sfx/ding.wav')} volume={0.12} /></Sequence>}
       </AbsoluteFill>
       </BeatCtx.Provider>
     </ThemeCtx.Provider>

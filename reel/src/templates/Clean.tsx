@@ -119,9 +119,9 @@ const WaveOrb: React.FC = () => {
   );
 };
 
-const CleanCaption: React.FC<{ captions: PCaption[] }> = ({ captions }) => {
+const CleanCaption: React.FC<{ captions: PCaption[]; offset?: number; card?: boolean }> = ({ captions, offset = 0, card = false }) => {
   const T = useTheme();
-  const frame = useCurrentFrame();
+  const frame = useCurrentFrame() + offset;
   const { fps } = useVideoConfig();
   const t = frame / fps;
   const idx = captions.findIndex((c) => t >= c.start && t < c.end + 0.08);
@@ -134,10 +134,10 @@ const CleanCaption: React.FC<{ captions: PCaption[] }> = ({ captions }) => {
   const size = len <= 26 ? 31 : len <= 38 ? 28 : 24;
   return (
     <>
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 118, background: 'linear-gradient(to top, rgba(42,42,46,0.94) 8%, rgba(42,42,46,0))' }} />
+      {card ? null : <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 118, background: 'linear-gradient(to top, rgba(42,42,46,0.94) 8%, rgba(42,42,46,0))' }} />}
       {cap ? (
-        <div style={{ position: 'absolute', left: 28, right: 28, bottom: 22, display: 'flex', justifyContent: 'center', opacity: clamp01(p * 1.6) * out, transform: 'translateY(' + (1 - clamp01(p)) * 10 + 'px)' }}>
-          <WordCaption cap={cap} size={size} fontFamily={SANS} />
+        <div style={{ position: 'absolute', left: 28, right: 28, ...(card ? { top: 0, bottom: 0, alignItems: 'center' } : { bottom: 22 }), display: 'flex', justifyContent: 'center', opacity: clamp01(p * 1.6) * out, transform: 'translateY(' + (1 - clamp01(p)) * 10 + 'px)' }}>
+          <WordCaption cap={cap} size={card ? size + 6 : size} fontFamily={SANS} offset={offset} />
         </div>
       ) : null}
     </>
@@ -188,7 +188,7 @@ const CleanSpeaker: React.FC<{ voice: boolean; videoUrl: string; cutoutUrl?: str
 };
 
 /** A glass graphic takes the whole screen: the speaker card steps aside, the picture stays big and readable. */
-const FullGraphic: React.FC<{ scene: PScene; dur: number; captions: PCaption[] }> = ({ scene, dur, captions }) => {
+const FullGraphic: React.FC<{ scene: PScene; dur: number; captions: PCaption[]; from: number }> = ({ scene, dur, captions, from }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const T = useTheme();
@@ -201,7 +201,7 @@ const FullGraphic: React.FC<{ scene: PScene; dur: number; captions: PCaption[] }
       <div style={{ position: 'absolute', left: 40, right: 40, top: 150, height: 760, display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'scale(' + (1.12 + 0.03 * (1 - inP)) + ')' }}>
         <SceneBody type={scene.scene_type} g={g} anim={scene.animation || 'pop_in'} frame={frame} fps={fps} dur={dur} />
       </div>
-      <div style={{ position: 'absolute', left: 48, top: 960, width: 624, height: 150 }}><CleanCaption captions={captions} /></div>
+      <div style={{ position: 'absolute', left: 48, top: 880, width: 624, height: 150, borderRadius: 28, background: 'rgba(30,30,36,0.94)', boxShadow: '0 24px 50px rgba(20,20,30,0.28)', overflow: 'hidden' }}><CleanCaption captions={captions} offset={from} card /></div>
     </div>
   );
 };
@@ -244,7 +244,7 @@ export const Clean: React.FC<CleanProps> = ({ plan, videoUrl, audioUrl, cutoutUr
           if (!GLASS_TYPES.includes(s.scene_type)) return null;
           const from = Math.round(s.start * fps);
           const to = i === prep.scenes.length - 1 ? prep.tl.totalFrames : Math.round(s.end * fps);
-          return <Sequence key={'fg' + i} from={from} durationInFrames={Math.max(1, to - from)}><FullGraphic scene={s} dur={Math.max(1, to - from)} captions={prep.captions} /></Sequence>;
+          return <Sequence key={'fg' + i} from={from} durationInFrames={Math.max(1, to - from)}><FullGraphic scene={s} dur={Math.max(1, to - from)} captions={prep.captions} from={from} /></Sequence>;
         })}
         <EmojiPops pops={(plan.pops ?? []).map((q) => ({ f: Math.round(prep.tl.mapT(q.t) * fps), emoji: q.emoji }))} />
         {plan.hook ? <HookIntro text={plan.hook} /> : null}

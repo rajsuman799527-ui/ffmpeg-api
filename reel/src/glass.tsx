@@ -476,7 +476,7 @@ const GlassPhone: React.FC<SP> = ({ g, frame, fps }) => {
         </div>
       </div>
       {g.text ? (
-        <div style={{ ...glassStyle(T, 34, 18), position: 'absolute', right: 20, top: 150, maxWidth: 270, padding: '16px 22px', transform: 'translateX(' + (1 - tb) * 120 + 'px) scale(' + (0.85 + 0.15 * tb) + ')', opacity: clamp01(tb * 1.5) }}>
+        <div style={{ ...glassStyle(T, 34, 18), position: 'absolute', right: -6, top: 400, maxWidth: 250, padding: '16px 22px', transform: 'translateX(' + (1 - tb) * 120 + 'px) scale(' + (0.85 + 0.15 * tb) + ')', opacity: clamp01(tb * 1.5) }}>
           <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 32, lineHeight: 1.1, color: T.ink }}>{g.text}</div>
         </div>
       ) : null}

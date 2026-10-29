@@ -3,7 +3,7 @@ import { Arrow, FONT, Icon, Pill, clamp01, enter, lerp, pop, useCard } from './u
 import { useTheme } from './theme';
 import { GLASS_TYPES, GlassBody } from './glass';
 
-export type G = { text?: string; icons?: string[]; items?: string[]; number?: number | null; label?: string; prefix?: string; suffix?: string; image?: string  images?: string[]; image?: string };
+export type G = { text?: string; icons?: string[]; items?: string[]; number?: number | null; label?: string; prefix?: string; suffix?: string; image?: string; images?: string[] };
 type SP = { g: G; anim: string; frame: number; fps: number; dur: number };
 
 const split = (s: string): [string, string] => {

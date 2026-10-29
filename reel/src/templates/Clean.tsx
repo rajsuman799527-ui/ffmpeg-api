@@ -3,6 +3,8 @@ import { AbsoluteFill, Audio, Easing, OffthreadVideo, Sequence, interpolate, spr
 import { ThemeCtx, getTheme, useTheme } from '../theme';
 import { F } from '../fonts';
 import { SceneBody } from '../scenes';
+import { GLASS_TYPES } from '../glass';
+import { EmojiPops, EndCard, HookIntro } from '../overlays';
 import { prepare, type PScene, type PCaption, type Seg } from '../timeline';
 import { MusicLayer, SfxLayer } from '../common';
 
@@ -18,6 +20,7 @@ type CleanPlan = {
   mode?: 'video' | 'voice';
   tracks?: { url: string; start: number }[];
   sfx?: boolean;
+  hook?: string; cta?: string; pops?: { t: number; emoji: string }[];
   brand?: { logoText?: string };
   style?: { theme?: string; accent?: string; currency?: string; zoom?: number };
   music?: { track?: string; volume?: number } | null;
@@ -89,12 +92,13 @@ const SceneShell: React.FC<{ scene: PScene; dur: number; hasTitle: boolean }> = 
   if (type === 'title_pill' || type === 'speaker_only' || type === 'lower_third') return null;
   const g: any = { ...((scene.graphic || {}) as any) };
   if (hasTitle && BODY_TYPES_WITH_OWN_HEADING.includes(type)) g.text = '';
+  const isGlass = GLASS_TYPES.includes(type);
   const out = scene.transition_out || 'blur_fade';
   const inP = interpolate(frame, [0, 7], [0, 1], { extrapolateRight: 'clamp', easing: EASE });
   const outP = out === 'cut' ? 1 : interpolate(dur - frame, [0, 8], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const blur = out === 'blur_fade' ? (1 - outP) * 6 : 0;
   return (
-    <div style={{ position: 'absolute', left: 40, right: 40, top: BODY.top, height: BODY.h, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: hasTitle ? 14 : 70, opacity: out === 'cut' ? inP : inP * outP, transform: 'scale(0.95)', transformOrigin: '50% 0%', filter: blur > 0.4 ? 'blur(' + blur + 'px)' : 'none' }}>
+    <div style={{ position: 'absolute', left: 40, right: 40, top: isGlass ? 190 : BODY.top, height: isGlass ? 470 : BODY.h, display: 'flex', alignItems: isGlass ? 'center' : 'flex-start', justifyContent: 'center', paddingTop: isGlass ? 0 : hasTitle ? 14 : 70, opacity: out === 'cut' ? inP : inP * outP, transform: isGlass ? 'scale(0.8)' : 'scale(0.95)', transformOrigin: isGlass ? '50% 50%' : '50% 0%', filter: blur > 0.4 ? 'blur(' + blur + 'px)' : 'none' }}>
       <SceneBody type={type} g={g} anim={scene.animation || 'pop_in'} frame={frame} fps={fps} dur={dur} />
     </div>
   );
@@ -218,6 +222,11 @@ export const Clean: React.FC<CleanProps> = ({ plan, videoUrl, audioUrl, cutoutUr
         {showHandle ? <div style={{ position: 'absolute', left: 0, right: 0, top: CARD.y + CARD.h + 28, textAlign: 'center', fontFamily: SANS, fontWeight: 600, fontSize: 24, color: '#9A9AA2', letterSpacing: 0.3 }}>{handle}</div> : null}
         {plan.sfx === false ? null : <SfxLayer plan={{ ...(plan as any), captions: prep.captions }} cfg={{ phrase: 'tick', emphasis: 'pop', vol: 0.2 }} />}
         {plan.music === null ? null : <MusicLayer track={plan.music?.track ?? 'warm'} volume={plan.music?.volume ?? (voice ? 0.14 : 0.1)} totalFrames={prep.tl.totalFrames} />}
+        <EmojiPops pops={(plan.pops ?? []).map((q) => ({ f: Math.round(prep.tl.mapT(q.t) * fps), emoji: q.emoji }))} />
+        {plan.hook ? <HookIntro text={plan.hook} /> : null}
+        <EndCard text={plan.cta ?? ''} brand={plan.brand?.logoText ?? ''} totalFrames={prep.tl.totalFrames} />
+        {plan.sfx === false ? null : plan.hook ? <Sequence from={0} durationInFrames={50}><Audio src={staticFile('sfx/whoosh.wav')} volume={0.12} /></Sequence> : null}
+        {plan.sfx === false || !plan.cta ? null : <Sequence from={Math.max(0, prep.tl.totalFrames - 72)} durationInFrames={60}><Audio src={staticFile('sfx/ding.wav')} volume={0.12} /></Sequence>}
       </AbsoluteFill>
     </ThemeCtx.Provider>
   );

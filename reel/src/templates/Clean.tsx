@@ -89,7 +89,7 @@ const SceneShell: React.FC<{ scene: PScene; dur: number; hasTitle: boolean }> = 
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const type = scene.scene_type;
-  if (type === 'title_pill' || type === 'speaker_only' || type === 'lower_third') return null;
+  if (type === 'title_pill' || type === 'speaker_only' || type === 'lower_third' || GLASS_TYPES.includes(type)) return null;
   const g: any = { ...((scene.graphic || {}) as any) };
   if (hasTitle && BODY_TYPES_WITH_OWN_HEADING.includes(type)) g.text = '';
   const isGlass = GLASS_TYPES.includes(type);
@@ -188,6 +188,25 @@ const CleanSpeaker: React.FC<{ voice: boolean; videoUrl: string; cutoutUrl?: str
   );
 };
 
+/** A glass graphic takes the whole screen: the speaker card steps aside, the picture stays big and readable. */
+const FullGraphic: React.FC<{ scene: PScene; dur: number; captions: PCaption[] }> = ({ scene, dur, captions }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const T = useTheme();
+  const inP = interpolate(frame, [0, 8], [0, 1], { extrapolateRight: 'clamp', easing: EASE });
+  const outP = interpolate(dur - frame, [0, 8], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const o = Math.min(inP, outP);
+  const g: any = { ...((scene.graphic || {}) as any) };
+  return (
+    <div style={{ position: 'absolute', inset: 0, background: T.bg, opacity: o }}>
+      <div style={{ position: 'absolute', left: 40, right: 40, top: 150, height: 760, display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'scale(' + (1.12 + 0.03 * (1 - inP)) + ')' }}>
+        <SceneBody type={scene.scene_type} g={g} anim={scene.animation || 'pop_in'} frame={frame} fps={fps} dur={dur} />
+      </div>
+      <div style={{ position: 'absolute', left: 48, top: 960, width: 624, height: 150 }}><CleanCaption captions={captions} /></div>
+    </div>
+  );
+};
+
 export const Clean: React.FC<CleanProps> = ({ plan, videoUrl, audioUrl, cutoutUrl }) => {
   const { fps } = useVideoConfig();
   const voice = plan.mode === 'voice' || !videoUrl;
@@ -211,6 +230,12 @@ export const Clean: React.FC<CleanProps> = ({ plan, videoUrl, audioUrl, cutoutUr
           const to = i === prep.scenes.length - 1 ? prep.tl.totalFrames : Math.round(s.end * fps);
           const dur = Math.max(1, to - from);
           return <Sequence key={s.id + '-' + i} from={from} durationInFrames={dur}><SceneShell scene={s} dur={dur} hasTitle={!!titleOf(s)} /></Sequence>;
+        })}
+        {prep.scenes.map((s, i) => {
+          if (!GLASS_TYPES.includes(s.scene_type)) return null;
+          const from = Math.round(s.start * fps);
+          const to = i === prep.scenes.length - 1 ? prep.tl.totalFrames : Math.round(s.end * fps);
+          return <Sequence key={'fg' + i} from={from} durationInFrames={Math.max(1, to - from)}><FullGraphic scene={s} dur={Math.max(1, to - from)} captions={prep.captions} /></Sequence>;
         })}
         {plan.sfx === false ? null : prep.scenes.slice(1).map((s, i) => (
           <Sequence key={'sw' + i} from={Math.max(0, Math.round(s.start * fps) - 3)} durationInFrames={30}><Audio src={staticFile('sfx/swish.wav')} volume={0.2} /></Sequence>

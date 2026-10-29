@@ -3,6 +3,7 @@ import { Img, spring } from 'remotion';
 import { FONT, Icon, clamp01 } from './ui';
 import { useTheme, type Theme } from './theme';
 import { useBeat } from './beat';
+import { KText } from './ktext';
 import type { G } from './scenes';
 
 type SP = { g: G; anim: string; frame: number; fps: number; dur: number };
@@ -91,7 +92,7 @@ const GlassStat: React.FC<SP> = ({ g, frame, fps }) => {
             {g.prefix || ''}{shown}<span style={{ fontSize: 68, color: T.dark ? T.accent : T.ink }}>{g.suffix || ''}</span>
           </div>
         ) : (
-          <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 62, lineHeight: 1.1, color: T.ink, marginTop: 14 }}>{g.text || ''}</div>
+          <KText text={g.text || ''} size={62} weight={800} speed={GLASS_SPEED} delay={8} style={{marginTop: 14}} />
         )}
         <svg width="520" height="100" viewBox="0 0 520 100" style={{ display: 'block', marginTop: 6 }}>
           <path d={path} fill="none" stroke={T.accent} strokeWidth={6} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={700} strokeDashoffset={700 * (1 - seg(frame, 10, 52))} style={{ filter: `drop-shadow(0 0 10px ${T.accent})` }} />
@@ -146,7 +147,7 @@ const GlassOrbs: React.FC<SP> = ({ g, frame, fps }) => {
       <Sphere size={88} x={200} y={140} frame={frame} fps={fps} seed={3} color={T.dark ? '#22D3EE' : '#FF4D6D'} delay={9} />
       <div style={{ ...glassStyle(T, 44), padding: '34px 44px', maxWidth: 520, textAlign: 'center', opacity: clamp01(e * 1.4), transform: `scale(${(0.9 + 0.1 * e) * (1 + 0.008 * b.pulse)})` }}>
         <Sheen frame={frame} start={16} />
-        <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 62, lineHeight: 1.1, color: T.ink }}>{g.text || ''}</div>
+        <KText text={g.text || ''} size={62} weight={800} speed={GLASS_SPEED} delay={8} />
         {g.label ? <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 28, color: T.sub, marginTop: 12 }}>{g.label}</div> : null}
       </div>
     </Stage>
@@ -162,7 +163,7 @@ const GlassQuote: React.FC<SP> = ({ g, frame, fps }) => {
       <div style={{ ...glassStyle(T, 44), width: 580, padding: '60px 46px 40px', opacity: clamp01(e * 1.4), transform: `translateY(${(1 - e) * 44}px) scale(${1 + 0.006 * b.pulse})` }}>
         <Sheen frame={frame} start={12} len={46} />
         <div style={{ position: 'absolute', top: 6, left: 30, fontFamily: 'Georgia, serif', fontWeight: 800, fontSize: 150, lineHeight: 1, color: T.accent, textShadow: `0 6px 24px ${T.accent}88` }}>“</div>
-        <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 46, lineHeight: 1.22, color: T.ink }}>{g.text || ''}</div>
+        <KText text={g.text || ''} size={46} weight={700} speed={GLASS_SPEED} delay={8} align="left" hi="none" />
         {g.label ? <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 26, color: T.sub, marginTop: 22 }}>{g.label}</div> : null}
       </div>
     </Stage>
@@ -264,7 +265,7 @@ const GlassIcon: React.FC<SP> = ({ g, frame, fps }) => {
           </div>
         </div>
         <div style={{ textAlign: 'center', opacity: clamp01(t * 1.4), transform: `translateY(${(1 - t) * 24}px)` }}>
-          <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 52, color: T.ink, lineHeight: 1.1, maxWidth: 560 }}>{g.text || ''}</div>
+          <KText text={g.text || ''} size={52} weight={800} speed={GLASS_SPEED} delay={8} style={{lineHeight: 1.1, maxWidth: 560}} />
           {g.label ? <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 28, color: T.sub, marginTop: 8 }}>{g.label}</div> : null}
         </div>
       </div>
@@ -408,7 +409,7 @@ const GlassPrice: React.FC<SP> = ({ g, frame, fps }) => {
           </div>
         </div>
         <div style={{ ...glassStyle(T, 40, 20), padding: '16px 34px', opacity: clamp01(t * 1.4), transform: 'translateY(' + (1 - t) * 30 + 'px)' }}>
-          <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 42, color: T.ink, textAlign: 'center', maxWidth: 520 }}>{g.text || ''}</div>
+          <KText text={g.text || ''} size={42} weight={800} speed={GLASS_SPEED} delay={8} style={{textAlign: 'center', maxWidth: 520}} />
         </div>
       </div>
     </Stage>
@@ -503,7 +504,7 @@ const GlassRing: React.FC<SP> = ({ g, frame, fps }) => {
           <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 118, color: T.ink, letterSpacing: -3 }}>{Math.round(pct * k)}<span style={{ fontSize: 56 }}>{g.suffix ?? '%'}</span></div>
         </div>
         <div style={{ textAlign: 'center', opacity: clamp01(t * 1.4), transform: 'translateY(' + (1 - t) * 24 + 'px)' }}>
-          <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 48, color: T.ink, maxWidth: 560, lineHeight: 1.1 }}>{g.text || ''}</div>
+          <KText text={g.text || ''} size={48} weight={800} speed={GLASS_SPEED} delay={8} style={{maxWidth: 560, lineHeight: 1.1}} />
           {g.label ? <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 28, color: T.sub, marginTop: 8 }}>{g.label}</div> : null}
         </div>
       </div>
@@ -530,7 +531,7 @@ const GlassPin: React.FC<SP> = ({ g, frame, fps }) => {
         </div>
       </div>
       <div style={{ ...glassStyle(T, 38, 20), position: 'absolute', bottom: 22, padding: '16px 34px', transform: 'translateY(' + (1 - t) * 40 + 'px)', opacity: clamp01(t * 1.5) }}>
-        <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 44, color: T.ink, textAlign: 'center' }}>{g.text || ''}</div>
+        <KText text={g.text || ''} size={44} weight={800} speed={GLASS_SPEED} delay={8} style={{textAlign: 'center'}} />
         {g.label ? <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 26, color: T.sub, textAlign: 'center' }}>{g.label}</div> : null}
       </div>
     </Stage>

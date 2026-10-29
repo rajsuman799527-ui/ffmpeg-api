@@ -84,7 +84,7 @@ const GlassStat: React.FC<SP> = ({ g, frame, fps }) => {
           <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 32, color: T.sub }}>{g.label || (hasNum(g) ? g.text : '') || ''}</div>
         </div>
         {hasNum(g) ? (
-          <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 142, lineHeight: 1.05, color: T.ink, letterSpacing: -3, marginTop: 8 }}>
+          <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: (g.prefix || '').length + Math.round(Math.abs(target)).toLocaleString('en-IN').length > 7 ? 92 : (g.prefix || '').length + Math.round(Math.abs(target)).toLocaleString('en-IN').length > 5 ? 112 : 142, lineHeight: 1.05, color: T.ink, letterSpacing: -3, marginTop: 8 }}>
             {g.prefix || ''}{shown}<span style={{ fontSize: 68, color: T.dark ? T.accent : T.ink }}>{g.suffix || ''}</span>
           </div>
         ) : (

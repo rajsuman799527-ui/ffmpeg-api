@@ -1,5 +1,6 @@
 import React from 'react';
-import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { Img, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { emoji3dSrc } from './emoji3d';
 import { FONT, Icon, clamp01 } from './ui';
 import { useTheme } from './theme';
 
@@ -18,8 +19,9 @@ export const EmojiPops: React.FC<{ pops: { f: number; emoji: string }[] }> = ({ 
         const s = spring({ frame: l, fps, config: { damping: 9, stiffness: 170, mass: 0.6 } });
         const out = interpolate(l, [30, 44], [1, 0], CL);
         const left = i % 2 === 0;
+        const src = emoji3dSrc(p.emoji);
         return (
-          <div key={i} style={{ position: 'absolute', left: left ? 40 : 550, top: 690 - l * 1.8 + (i % 3) * 26, width: 130, textAlign: 'center', fontFamily: EMOJI_FONT, fontSize: 118, lineHeight: 1, opacity: out * clamp01(s * 2), transform: 'scale(' + (0.2 + 0.95 * s) + ') rotate(' + ((left ? -1 : 1) * (12 - 16 * (1 - s))) + 'deg)', filter: 'drop-shadow(0 14px 16px rgba(0,0,0,0.3))' }}>{p.emoji}</div>
+          <div key={i} style={{ position: 'absolute', left: left ? 40 : 550, top: 690 - l * 1.8 + (i % 3) * 26, width: 130, textAlign: 'center', fontFamily: EMOJI_FONT, fontSize: 118, lineHeight: 1, opacity: out * clamp01(s * 2), transform: 'scale(' + (0.2 + 0.95 * s) + ') rotate(' + ((left ? -1 : 1) * (12 - 16 * (1 - s))) + 'deg)', filter: 'drop-shadow(0 14px 16px rgba(0,0,0,0.3))' }}>{src ? <Img src={src} style={{ width: 124, height: 124, objectFit: 'contain' }} /> : p.emoji}</div>
         );
       })}
     </>

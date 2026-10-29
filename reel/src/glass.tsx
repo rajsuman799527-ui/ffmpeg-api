@@ -7,6 +7,9 @@ import type { G } from './scenes';
 
 type SP = { g: G; anim: string; frame: number; fps: number; dur: number };
 
+/** Glass animations run this much faster than the raw frame counter (1 = original). Sound cues in Studio use the same number. */
+export const GLASS_SPEED = 1.4;
+
 export const GLASS_TYPES = ['glass_stat', 'glass_list', 'glass_orbs', 'glass_quote', 'glass_compare', 'glass_steps', 'glass_chart', 'glass_icon', 'glass_tags', 'photo_3d', 'photo_stack', 'photo_wide'];
 
 const ease = (t: number) => 1 - Math.pow(1 - clamp01(t), 3);
@@ -383,7 +386,8 @@ const PhotoWide: React.FC<SP> = (p) => {
   );
 };
 
-export const GlassBody: React.FC<SP & { type: string }> = (p) => {
+export const GlassBody: React.FC<SP & { type: string }> = (p0) => {
+  const p = { ...p0, frame: p0.frame * GLASS_SPEED, dur: p0.dur * GLASS_SPEED };
   switch (p.type) {
     case 'glass_stat': return <GlassStat {...p} />;
     case 'glass_list': return <GlassList {...p} />;

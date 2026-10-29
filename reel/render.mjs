@@ -14,6 +14,18 @@ const res = await fetch(PLAN_URL);
 if (!res.ok) { console.error('plan download failed', res.status); process.exit(1); }
 const plan = await res.json();
 const last = Math.max(1, ...plan.scenes.map((s) => s.end), ...plan.captions.map((c) => c.end));
+// The real size of the speaker's video, so the card can show it as it is.
+if (VIDEO_URL) {
+  try {
+    const pr = spawnSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height:stream_side_data=rotation:stream_tags=rotate', '-of', 'json', VIDEO_URL], { encoding: 'utf8', timeout: 45000 });
+    const st = (JSON.parse(pr.stdout || '{}').streams || [])[0];
+    if (st && st.width && st.height) {
+      const rot = Math.abs(Number((st.side_data_list && st.side_data_list[0] && st.side_data_list[0].rotation) || (st.tags && st.tags.rotate) || 0)) % 180;
+      plan.src = rot === 90 ? { w: st.height, h: st.width } : { w: st.width, h: st.height };
+      console.log('source video size', JSON.stringify(plan.src));
+    }
+  } catch (e) { console.log('could not read the video size:', e.message); }
+}
 console.log('plan ok: mode', plan.mode || 'video', 'captions', plan.captions.length, 'seconds', last);
 
 // music + sound effects (synthesized, royalty free)

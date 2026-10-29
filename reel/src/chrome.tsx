@@ -56,6 +56,10 @@ export const Speaker: React.FC<{ videoUrl: string; cutoutUrl?: string; segs: Seg
   const r = gp.r + (gc.r - gp.r) * k;
   const pulse = (frame % 60) / 60;
   const inner = kind === 'card' ? Math.min(w, h) - 70 : 0;
+  // Slow push-in on one scene, slow pull-out on the next, so the speaker never sits still.
+  const sceneFrames = Math.max(1, ((cur?.end ?? 1) - (cur?.start ?? 0)) * fps);
+  const zp = Math.min(1, Math.max(0, local / sceneFrames));
+  const zoom = idx % 2 === 0 ? 1 + 0.08 * zp : 1.08 - 0.08 * zp;
   if (cutoutUrl) {
     // Background removed: the speaker stands on the theme background (no frame). Sound still comes from the original clip, with the same jump cuts.
     const cw = w * 1.3, ch = h * 1.3;
@@ -68,7 +72,7 @@ export const Speaker: React.FC<{ videoUrl: string; cutoutUrl?: string; segs: Seg
           </Sequence>
         ))}
         <div style={{ position: 'absolute', left: 360 - (w * 0.92) / 2, top: y - h * 0.05 - (w * 0.92) / 2, width: w * 0.92, height: w * 0.92, borderRadius: '50%', background: T.accent, boxShadow: `0 12px 44px ${T.accent}77`, opacity: 0.95 }} />
-        <div style={{ position: 'absolute', left: 360 - cw / 2, top: bottom - ch, width: cw, height: ch, filter: `drop-shadow(0 0 14px ${T.accent}cc) drop-shadow(0 22px 34px rgba(0,0,0,0.38))` }}>
+        <div style={{ position: 'absolute', left: 360 - cw / 2, top: bottom - ch, width: cw, height: ch, transform: `scale(${zoom})`, transformOrigin: '50% 100%', filter: `drop-shadow(0 0 14px ${T.accent}cc) drop-shadow(0 22px 34px rgba(0,0,0,0.38))` }}>
           {segs.map((s, i) => (
             <Sequence key={'v' + i} from={s.outFrame} durationInFrames={s.frames}>
               <OffthreadVideo src={cutoutUrl} transparent muted startFrom={Math.round(s.start * fps)} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 30%' }} />
@@ -82,7 +86,7 @@ export const Speaker: React.FC<{ videoUrl: string; cutoutUrl?: string; segs: Seg
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', background: '#000', borderRadius: kind === 'card' ? '50%' : r }}>
       {segs.map((s, i) => (
         <Sequence key={i} from={s.outFrame} durationInFrames={s.frames}>
-          <OffthreadVideo src={videoUrl} startFrom={Math.round(s.start * fps)} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 30%' }} />
+          <OffthreadVideo src={videoUrl} startFrom={Math.round(s.start * fps)} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 30%', transform: `scale(${zoom})` }} />
         </Sequence>
       ))}
     </div>

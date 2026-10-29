@@ -19,6 +19,7 @@ type CleanPlan = {
   video: { width: number; height: number; fps: number };
   duration?: number;
   mode?: 'video' | 'voice';
+  src?: { w: number; h: number };
   tracks?: { url: string; start: number }[];
   sfx?: boolean;
   hook?: string; cta?: string; pops?: { t: number; emoji: string }[];
@@ -34,6 +35,12 @@ export type CleanProps = { plan: CleanPlan; videoUrl: string; audioUrl?: string;
 const SANS = F.inter + ', ' + F.deva + ', sans-serif';
 const CARD = { x: 48, y: 660, w: 624, h: 336, r: 26 };
 const CIRCLE = 300;
+/** The speaker box: 16:9 videos fill it exactly; taller videos make it taller (up to 560) and are shown whole, never cropped into a circle. */
+const cardGeom = (src?: { w: number; h: number }) => {
+  const aspect = src && src.w > 0 && src.h > 0 ? src.h / src.w : 0;
+  const h = aspect ? Math.max(CARD.h, Math.min(560, Math.round(CARD.w * aspect))) : CARD.h;
+  return { h, fit: (aspect ? 'contain' : 'cover') as 'contain' | 'cover' };
+};
 const BODY = { top: 262, h: 392 };
 const EASE = Easing.bezier(0.22, 1, 0.36, 1);
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
@@ -119,7 +126,7 @@ const WaveOrb: React.FC = () => {
   );
 };
 
-const CleanCaption: React.FC<{ captions: PCaption[]; offset?: number; card?: boolean }> = ({ captions, offset = 0, card = false }) => {
+const CleanCaption: React.FC<{ captions: PCaption[]; offset?: number; card?: boolean; big?: boolean }> = ({ captions, offset = 0, card = false, big = false }) => {
   const T = useTheme();
   const frame = useCurrentFrame() + offset;
   const { fps } = useVideoConfig();
@@ -131,20 +138,34 @@ const CleanCaption: React.FC<{ captions: PCaption[]; offset?: number; card?: boo
   const words = cap ? cap.text.split(/\s+/).filter(Boolean) : [];
   const emph = cap && typeof cap.emphasis === 'number' && cap.emphasis >= 0 && cap.emphasis < words.length ? cap.emphasis : -1;
   const len = cap ? cap.text.length : 0;
-  const size = len <= 26 ? 31 : len <= 38 ? 28 : 24;
+  const size = big ? (len <= 20 ? 60 : len <= 30 ? 52 : len <= 44 ? 44 : 38) : len <= 26 ? 31 : len <= 38 ? 28 : 24;
   return (
     <>
       {card ? null : <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 118, background: 'linear-gradient(to top, rgba(42,42,46,0.94) 8%, rgba(42,42,46,0))' }} />}
       {cap ? (
         <div style={{ position: 'absolute', left: 28, right: 28, ...(card ? { top: 0, bottom: 0, alignItems: 'center' } : { bottom: 22 }), display: 'flex', justifyContent: 'center', opacity: clamp01(p * 1.6) * out, transform: 'translateY(' + (1 - clamp01(p)) * 10 + 'px)' }}>
-          <WordCaption cap={cap} size={card ? size + 6 : size} fontFamily={SANS} offset={offset} />
+          <WordCaption cap={cap} size={card && !big ? size + 6 : size} fontFamily={SANS} offset={offset} />
         </div>
       ) : null}
     </>
   );
 };
 
-const CleanSpeaker: React.FC<{ voice: boolean; videoUrl: string; cutoutUrl?: string; segs: Seg[]; captions: PCaption[]; zoom: number }> = ({ voice, videoUrl, cutoutUrl, segs, captions, zoom }) => {
+/** Voice-only reels have no speaker, so there is no box: big captions on a dark panel, with the graphics above. */
+const VoicePanel: React.FC<{ captions: PCaption[] }> = ({ captions }) => {
+  const T = useTheme();
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const enter = spring({ frame, fps, config: { damping: 18, stiffness: 110, mass: 0.9 } });
+  return (
+    <div style={{ position: 'absolute', left: CARD.x, top: 690, width: CARD.w, height: 400, borderRadius: 30, background: 'linear-gradient(160deg, rgba(36,36,44,0.97), rgba(20,20,26,0.97))', boxShadow: '0 30px 64px rgba(20,20,30,0.30)', overflow: 'hidden', opacity: clamp01(enter * 1.6), transform: 'translateY(' + (1 - enter) * 40 + 'px)' }}>
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 6, background: T.accent }} />
+      <CleanCaption captions={captions} card big />
+    </div>
+  );
+};
+
+const CleanSpeaker: React.FC<{ videoUrl: string; cutoutUrl?: string; segs: Seg[]; captions: PCaption[]; zoom: number; src?: { w: number; h: number } }> = ({ videoUrl, cutoutUrl, segs, captions, zoom, src }) => {
   const T = useTheme();
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -152,34 +173,31 @@ const CleanSpeaker: React.FC<{ voice: boolean; videoUrl: string; cutoutUrl?: str
   const float = Math.sin(frame / 38) * 3;
   const pulse = (frame % 90) / 90;
   const cw = Math.round(400 * zoom);
+  const geo = cardGeom(src);
   return (
     <>
-      {!voice && cutoutUrl ? segs.map((s, i) => (
+      {cutoutUrl ? segs.map((s, i) => (
         <Sequence key={'a' + i} from={s.outFrame} durationInFrames={s.frames}><Audio src={videoUrl} startFrom={Math.round(s.start * fps)} /></Sequence>
       )) : null}
-      <div style={{ position: 'absolute', left: CARD.x, top: CARD.y, width: CARD.w, height: CARD.h, borderRadius: CARD.r, background: T.dark ? '#1B1B26' : '#F2F2F3', overflow: 'hidden', boxShadow: '0 28px 60px rgba(20,20,24,0.09), 0 2px 8px rgba(20,20,24,0.05)', opacity: clamp01(enter * 1.6), transform: 'translateY(' + ((1 - enter) * 40 + float) + 'px)' }}>
-        <div style={{ position: 'absolute', left: (CARD.w - CIRCLE) / 2 - 16, top: 14, width: CIRCLE + 32, height: CIRCLE + 32, borderRadius: '50%', border: '2px solid ' + T.accent, opacity: 0.5 * (1 - pulse), transform: 'scale(' + (1 + pulse * 0.08) + ')' }} />
-        {voice ? <WaveOrb /> : (
+      <div style={{ position: 'absolute', left: CARD.x, top: CARD.y, width: CARD.w, height: geo.h, borderRadius: CARD.r, background: T.dark ? '#1B1B26' : '#F2F2F3', overflow: 'hidden', boxShadow: '0 28px 60px rgba(20,20,24,0.09), 0 2px 8px rgba(20,20,24,0.05)', opacity: clamp01(enter * 1.6), transform: 'translateY(' + ((1 - enter) * 40 + float) + 'px)' }}>
+        {cutoutUrl ? (
           <>
+            <div style={{ position: 'absolute', left: (CARD.w - CIRCLE) / 2 - 16, top: 14, width: CIRCLE + 32, height: CIRCLE + 32, borderRadius: '50%', border: '2px solid ' + T.accent, opacity: 0.5 * (1 - pulse), transform: 'scale(' + (1 + pulse * 0.08) + ')' }} />
             <div style={{ position: 'absolute', left: (CARD.w - CIRCLE) / 2, top: 30, width: CIRCLE, height: CIRCLE, borderRadius: '50%', background: T.accent }} />
-            {cutoutUrl ? (
-              <div style={{ position: 'absolute', left: (CARD.w - cw) / 2, bottom: 0, width: cw, height: cw }}>
-                {segs.map((s, i) => (
-                  <Sequence key={'v' + i} from={s.outFrame} durationInFrames={s.frames}>
-                    <OffthreadVideo src={cutoutUrl} transparent muted startFrom={Math.round(s.start * fps)} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 24%' }} />
-                  </Sequence>
-                ))}
-              </div>
-            ) : (
-              <div style={{ position: 'absolute', left: (CARD.w - (CIRCLE - 24)) / 2, top: 42, width: CIRCLE - 24, height: CIRCLE - 24, borderRadius: '50%', overflow: 'hidden', background: '#000' }}>
-                {segs.map((s, i) => (
-                  <Sequence key={'f' + i} from={s.outFrame} durationInFrames={s.frames}>
-                    <OffthreadVideo src={videoUrl} startFrom={Math.round(s.start * fps)} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 28%' }} />
-                  </Sequence>
-                ))}
-              </div>
-            )}
+            <div style={{ position: 'absolute', left: (CARD.w - cw) / 2, bottom: 0, width: cw, height: cw }}>
+              {segs.map((s, i) => (
+                <Sequence key={'v' + i} from={s.outFrame} durationInFrames={s.frames}>
+                  <OffthreadVideo src={cutoutUrl} transparent muted startFrom={Math.round(s.start * fps)} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 24%' }} />
+                </Sequence>
+              ))}
+            </div>
           </>
+        ) : (
+          segs.map((s, i) => (
+            <Sequence key={'f' + i} from={s.outFrame} durationInFrames={s.frames}>
+              <OffthreadVideo src={videoUrl} startFrom={Math.round(s.start * fps)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: geo.fit, objectPosition: '50% 30%' }} />
+            </Sequence>
+          ))
         )}
         <CleanCaption captions={captions} />
       </div>
@@ -236,8 +254,8 @@ export const Clean: React.FC<CleanProps> = ({ plan, videoUrl, audioUrl, cutoutUr
         {voice ? (plan.tracks && plan.tracks.length
           ? plan.tracks.map((t, i) => <Sequence key={'tr' + i} from={Math.max(0, Math.round(t.start * fps))}><Audio src={t.url} /></Sequence>)
           : audioUrl ? <Audio src={audioUrl} /> : null) : null}
-        <CleanSpeaker voice={voice} videoUrl={videoUrl} cutoutUrl={cutoutUrl} segs={prep.tl.segs} captions={prep.captions} zoom={zoom} />
-        {showHandle ? <div style={{ position: 'absolute', left: 0, right: 0, top: CARD.y + CARD.h + 28, textAlign: 'center', fontFamily: SANS, fontWeight: 600, fontSize: 24, color: '#9A9AA2', letterSpacing: 0.3 }}>{handle}</div> : null}
+        {voice ? <VoicePanel captions={prep.captions} /> : <CleanSpeaker videoUrl={videoUrl} cutoutUrl={cutoutUrl} segs={prep.tl.segs} captions={prep.captions} zoom={zoom} src={plan.src} />}
+        {showHandle ? <div style={{ position: 'absolute', left: 0, right: 0, top: (voice ? 690 + 400 : CARD.y + cardGeom(plan.src).h) + 28, textAlign: 'center', fontFamily: SANS, fontWeight: 600, fontSize: 24, color: '#9A9AA2', letterSpacing: 0.3 }}>{handle}</div> : null}
         {plan.sfx === false ? null : <SfxLayer plan={{ ...(plan as any), captions: prep.captions }} cfg={{ phrase: 'tick', emphasis: 'pop', vol: 0.2 }} />}
         {plan.music === null ? null : <MusicLayer track={plan.music?.track ?? 'warm'} volume={plan.music?.volume ?? (voice ? 0.14 : 0.1)} totalFrames={prep.tl.totalFrames} />}
         {prep.scenes.map((s, i) => {

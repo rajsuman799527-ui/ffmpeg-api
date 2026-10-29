@@ -38,9 +38,8 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg git
-          python -m pip install --upgrade pip
+          # ffmpeg and git are already on the runner; only install if missing.
+          command -v ffmpeg >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg; }
 
       - name: Download input video
         env:
@@ -67,7 +66,7 @@ jobs:
       - name: Split the video into frames
         run: |
           mkdir -p frames
-          ffmpeg -y -v error -i input.mp4 -vsync 0 -q:v 2 frames/%05d.jpg
+          ffmpeg -y -v error -i input.mp4 -vsync 0 -q:v 3 frames/%05d.jpg
           ls frames | wc -l
 
       - name: Run RVM on CPU
@@ -81,16 +80,17 @@ jobs:
             --device cpu \
             --input-source ../frames \
             --output-type png_sequence \
-            --output-alpha ../alpha \
-            --output-foreground ../fg
+            --downsample-ratio 0.4 \
+            --output-alpha ../alpha
           ls ../alpha | wc -l
 
       - name: Create transparent WebM
         run: |
           FPS=$(ffprobe -v error -select_streams v:0 -show_entries stream=r_frame_rate -of csv=p=0 input.mp4)
-          ffmpeg -y -v error -framerate "$FPS" -i fg/%04d.png -framerate "$FPS" -i alpha/%04d.png \
-            -filter_complex "[0:v][1:v]alphamerge,format=yuva420p[out]" \
-            -map "[out]" -an -c:v libvpx-vp9 -pix_fmt yuva420p -b:v 0 -crf 32 -row-mt 1 \
+          # The colour comes from the original frames, only the alpha comes from RVM: no second PNG sequence to write and read.
+          ffmpeg -y -v error -i input.mp4 -framerate "$FPS" -i alpha/%04d.png \
+            -filter_complex "[1:v]format=gray[a];[0:v][a]alphamerge,format=yuva420p[out]" \
+            -map "[out]" -an -c:v libvpx-vp9 -pix_fmt yuva420p -b:v 0 -crf 34 -deadline realtime -cpu-used 5 -row-mt 1 \
             transparent.webm
           ls -la transparent.webm
 

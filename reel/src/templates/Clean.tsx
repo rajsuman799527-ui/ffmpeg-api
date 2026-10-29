@@ -7,6 +7,7 @@ import { GLASS_TYPES } from '../glass';
 import { EmojiPops, EndCard, HookIntro } from '../overlays';
 import { prepare, type PScene, type PCaption, type Seg } from '../timeline';
 import { MusicLayer, SfxLayer } from '../common';
+import { KText, WordCaption } from '../ktext';
 
 /**
  * "Clean": the editorial explainer look.
@@ -78,7 +79,7 @@ const TitlePill: React.FC<{ title: string; dur: number }> = ({ title, dur }) => 
   const size = title.length > 40 ? 24 : title.length > 26 ? 28 : 32;
   return (
     <div style={{ position: 'absolute', left: 0, right: 0, top: 168, display: 'flex', justifyContent: 'center', opacity: clamp01(p * 1.5) * out, transform: 'translateY(' + (1 - p) * 14 + 'px) scale(' + (0.9 + 0.1 * p) * (0.97 + 0.03 * out) + ')' }}>
-      <div style={{ background: T.pillBg, color: T.pillFg, fontFamily: SANS, fontWeight: 700, fontSize: size, lineHeight: 1.1, padding: '15px 34px', borderRadius: 999, maxWidth: 640, textAlign: 'center', boxShadow: '0 12px 28px rgba(0,0,0,0.16)' }}>{title}</div>
+      <div style={{ background: T.pillBg, color: T.pillFg, fontFamily: SANS, fontWeight: 700, fontSize: size, lineHeight: 1.1, padding: '15px 34px', borderRadius: 999, maxWidth: 640, textAlign: 'center', boxShadow: '0 12px 28px rgba(0,0,0,0.16)' }}><KText text={title} size={size} weight={700} color={T.pillFg} hi="none" step={2.5} delay={2} family={SANS} tracking={0} lineHeight={1.1} /></div>
     </div>
   );
 };
@@ -136,9 +137,7 @@ const CleanCaption: React.FC<{ captions: PCaption[] }> = ({ captions }) => {
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 118, background: 'linear-gradient(to top, rgba(42,42,46,0.94) 8%, rgba(42,42,46,0))' }} />
       {cap ? (
         <div style={{ position: 'absolute', left: 28, right: 28, bottom: 22, display: 'flex', justifyContent: 'center', opacity: clamp01(p * 1.6) * out, transform: 'translateY(' + (1 - clamp01(p)) * 10 + 'px)' }}>
-          <div style={{ fontFamily: SANS, fontWeight: 500, fontSize: size, lineHeight: 1.18, color: '#fff', textAlign: 'center', letterSpacing: 0.1, textShadow: '0 1px 8px rgba(0,0,0,0.35)' }}>
-            {words.map((w, i) => <span key={i} style={{ color: i === emph ? T.accent : '#fff', fontWeight: i === emph ? 700 : 500 }}>{w + (i < words.length - 1 ? ' ' : '')}</span>)}
-          </div>
+          <WordCaption cap={cap} size={size} fontFamily={SANS} />
         </div>
       ) : null}
     </>

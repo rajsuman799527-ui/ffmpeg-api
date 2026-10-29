@@ -330,7 +330,7 @@ const PhotoStack: React.FC<SP> = (p) => {
   const cap = spr(frame, fps, 18);
   return (
     <Stage frame={frame}>
-      <div style={{ perspective: 1500, position: 'relative', width: 620, height: 470 }}>
+      <div style={{ perspective: 1500, position: 'relative', width: 620, height: 470, transform: 'translateY(-34px) scale(0.78)' }}>
         {imgs.map((src, i) => {
           const order = imgs.length === 1 ? 2 : imgs.length === 2 ? (i === 0 ? 0 : 2) : i;
           const s = slots[order];
@@ -363,7 +363,7 @@ const PhotoWide: React.FC<SP> = (p) => {
   const chips = (g.items || []).slice(0, 3);
   return (
     <Stage frame={frame}>
-      <div style={{ position: 'relative', width: 620, height: 430, opacity: clamp01(e * 1.4), transform: 'translateY(' + (1 - e) * 50 + 'px) scale(' + (0.92 + 0.08 * e) + ') rotateZ(' + Math.sin(frame / 70) * 0.6 + 'deg)' }}>
+      <div style={{ position: 'relative', width: 620, height: 430, opacity: clamp01(e * 1.4), transform: 'translateY(' + ((1 - e) * 50 - 24) + 'px) scale(' + (0.86 * (0.92 + 0.08 * e)) + ') rotateZ(' + Math.sin(frame / 70) * 0.6 + 'deg)' }}>
         <div style={{ position: 'absolute', inset: 0, borderRadius: 46, overflow: 'hidden', border: '2px solid rgba(255,255,255,0.65)', boxShadow: '0 40px 70px rgba(0,0,0,0.4), 0 0 60px ' + T.accent + '55' }}>
           <Img src={g.image} style={{ width: '112%', height: '112%', objectFit: 'cover', transform: 'translate(' + (-frame * 0.11) + 'px, ' + (-frame * 0.05) + 'px) scale(' + (1.06 + frame * 0.0015) + ')' }} />
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0) 35%, rgba(0,0,0,0.42) 100%)' }} />

@@ -210,14 +210,14 @@ const CleanSpeaker: React.FC<{ videoUrl: string; cutoutUrl?: string; segs: Seg[]
   const enter = spring({ frame, fps, config: { damping: 18, stiffness: 110, mass: 0.9 } });
   const float = Math.sin(frame / 38) * 3;
   const pulse = (frame % 90) / 90;
-  const cw = Math.round(400 * zoom);
+  const cw = Math.round(470 * zoom);
   const geo = cardGeom(src);
   return (
     <>
       {cutoutUrl ? segs.map((s, i) => (
         <Sequence key={'a' + i} from={s.outFrame} durationInFrames={s.frames}><Audio src={videoUrl} startFrom={Math.round(s.start * fps)} /></Sequence>
       )) : null}
-      <div style={{ position: 'absolute', left: CARD.x, top: CARD.y, width: CARD.w, height: geo.h, borderRadius: CARD.r, background: T.dark ? '#1B1B26' : '#F2F2F3', overflow: 'hidden', boxShadow: '0 28px 60px rgba(20,20,24,0.09), 0 2px 8px rgba(20,20,24,0.05)', opacity: clamp01(enter * 1.6), transform: 'translateY(' + ((1 - enter) * 40 + float) + 'px)' }}>
+      <div style={{ position: 'absolute', left: CARD.x, top: CARD.y - 36, width: CARD.w, height: geo.h, borderRadius: CARD.r, background: T.dark ? '#1B1B26' : '#F2F2F3', overflow: 'hidden', boxShadow: '0 28px 60px rgba(20,20,24,0.09), 0 2px 8px rgba(20,20,24,0.05)', opacity: clamp01(enter * 1.6), transform: 'translateY(' + ((1 - enter) * 40 + float) + 'px)' }}>
         {cutoutUrl ? (
           <>
             <div style={{ position: 'absolute', left: (CARD.w - CIRCLE) / 2 - 16, top: 14, width: CIRCLE + 32, height: CIRCLE + 32, borderRadius: '50%', border: '2px solid ' + T.accent, opacity: 0.5 * (1 - pulse), transform: 'scale(' + (1 + pulse * 0.08) + ')' }} />
@@ -225,7 +225,7 @@ const CleanSpeaker: React.FC<{ videoUrl: string; cutoutUrl?: string; segs: Seg[]
             <div style={{ position: 'absolute', left: (CARD.w - cw) / 2, bottom: 0, width: cw, height: cw }}>
               {segs.map((s, i) => (
                 <Sequence key={'v' + i} from={s.outFrame} durationInFrames={s.frames}>
-                  <OffthreadVideo src={cutoutUrl} transparent muted startFrom={Math.round(s.start * fps)} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 24%' }} />
+                  <OffthreadVideo src={cutoutUrl} transparent muted startFrom={Math.round(s.start * fps)} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 40%' }} />
                 </Sequence>
               ))}
             </div>
@@ -237,8 +237,11 @@ const CleanSpeaker: React.FC<{ videoUrl: string; cutoutUrl?: string; segs: Seg[]
             </Sequence>
           ))
         )}
-        <CleanCaption captions={captions} />
-      </div>
+        </div>
+        <div style={{ position: 'absolute', left: CARD.x, top: CARD.y - 36 + geo.h + 10, width: CARD.w, height: 124, borderRadius: 28, background: 'linear-gradient(160deg, rgba(36,36,44,0.97), rgba(20,20,26,0.97))', boxShadow: '0 24px 54px rgba(20,20,30,0.26)', overflow: 'hidden', opacity: clamp01(enter * 1.6), transform: 'translateY(' + ((1 - enter) * 40 + float) + 'px)' }}>
+          <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 5, background: T.accent }} />
+          <CleanCaption captions={captions} card />
+        </div>
     </>
   );
 };
@@ -351,7 +354,7 @@ export const Clean: React.FC<CleanProps> = ({ plan, videoUrl, audioUrl, cutoutUr
           ? plan.tracks.map((t, i) => <Sequence key={'tr' + i} from={Math.max(0, Math.round(t.start * fps))}><Audio src={t.url} /></Sequence>)
           : audioUrl ? <Audio src={audioUrl} /> : null) : null}
         {voice ? <VoicePanel captions={prep.captions} hook={!!plan.hook} glass={prep.scenes.filter((s) => GLASS_TYPES.includes(s.scene_type)).map((s, _i, _a) => ({ from: Math.round(s.start * fps) - 4, to: Math.round(s.end * fps) + 2 }))} /> : <CleanSpeaker videoUrl={videoUrl} cutoutUrl={cutoutUrl} segs={prep.tl.segs} captions={prep.captions} zoom={zoom} src={plan.src} />}
-        {showHandle ? <div style={{ position: 'absolute', left: 0, right: 0, top: (voice ? 690 + 400 : CARD.y + cardGeom(plan.src).h) + 28, textAlign: 'center', fontFamily: SANS, fontWeight: 600, fontSize: 24, color: '#9A9AA2', letterSpacing: 0.3 }}>{handle}</div> : null}
+        {showHandle ? <div style={{ position: 'absolute', left: 0, right: 0, top: (voice ? 690 + 400 : CARD.y + cardGeom(plan.src).h) + (voice ? 28 : 112), textAlign: 'center', fontFamily: SANS, fontWeight: 600, fontSize: 24, color: '#9A9AA2', letterSpacing: 0.3 }}>{handle}</div> : null}
         {plan.sfx === false ? null : <SfxLayer plan={{ ...(plan as any), captions: prep.captions }} cfg={{ phrase: 'tick', emphasis: 'pop', vol: 0.2 }} />}
         {plan.music === null ? null : <MusicLayer track={plan.music?.track ?? 'warm'} volume={plan.music?.volume ?? (voice ? 0.14 : 0.1)} totalFrames={prep.tl.totalFrames} />}
         {prep.scenes.map((s, i) => {

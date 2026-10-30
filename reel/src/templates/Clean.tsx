@@ -157,8 +157,11 @@ const VoicePanel: React.FC<{ captions: PCaption[] }> = ({ captions }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const enter = spring({ frame, fps, config: { damping: 18, stiffness: 110, mass: 0.9 } });
+  const tt = frame / fps;
+  const gap = Math.min(99, ...captions.map((c) => (tt < c.start ? c.start - tt : tt > c.end ? tt - c.end : 0)));
+  const vis = clamp01(1 - gap / 0.4);
   return (
-    <div style={{ position: 'absolute', left: CARD.x, top: 690, width: CARD.w, height: 400, borderRadius: 30, background: 'linear-gradient(160deg, rgba(36,36,44,0.97), rgba(20,20,26,0.97))', boxShadow: '0 30px 64px rgba(20,20,30,0.30)', overflow: 'hidden', opacity: clamp01(enter * 1.6), transform: 'translateY(' + (1 - enter) * 40 + 'px)' }}>
+    <div style={{ position: 'absolute', left: CARD.x, top: 690, width: CARD.w, height: 400, borderRadius: 30, background: 'linear-gradient(160deg, rgba(36,36,44,0.97), rgba(20,20,26,0.97))', boxShadow: '0 30px 64px rgba(20,20,30,0.30)', overflow: 'hidden', opacity: clamp01(enter * 1.6) * vis, transform: 'translateY(' + ((1 - enter) * 40 + (1 - vis) * 24) + 'px)' }}>
       <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 6, background: T.accent }} />
       <CleanCaption captions={captions} card big />
     </div>

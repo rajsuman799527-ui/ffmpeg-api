@@ -160,9 +160,9 @@ const GlassQuote: React.FC<SP> = ({ g, frame, fps }) => {
   const e = spr(frame, fps, 0);
   return (
     <Stage frame={frame}>
-      <div style={{ ...glassStyle(T, 44), width: 580, padding: '60px 46px 40px', opacity: clamp01(e * 1.4), transform: `translateY(${(1 - e) * 44}px) scale(${1 + 0.006 * b.pulse})` }}>
+      <div style={{ ...glassStyle(T, 44), width: 580, padding: '108px 46px 44px', opacity: clamp01(e * 1.4), transform: `translateY(${(1 - e) * 44}px) scale(${1 + 0.006 * b.pulse})` }}>
         <Sheen frame={frame} start={12} len={46} />
-        <div style={{ position: 'absolute', top: 6, left: 30, fontFamily: 'Georgia, serif', fontWeight: 800, fontSize: 150, lineHeight: 1, color: T.accent, textShadow: `0 6px 24px ${T.accent}88` }}>“</div>
+        <div style={{ position: 'absolute', top: 2, left: 34, fontFamily: 'Georgia, serif', fontWeight: 800, fontSize: 130, lineHeight: 1, color: T.accent, textShadow: `0 6px 24px ${T.accent}88` }}>“</div>
         <KText text={g.text || ''} size={46} weight={700} speed={GLASS_SPEED} delay={8} align="left" hi="none" />
         {g.label ? <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 26, color: T.sub, marginTop: 22 }}>{g.label}</div> : null}
       </div>

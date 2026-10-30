@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { AbsoluteFill, Audio, Easing, OffthreadVideo, Sequence, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Audio, Easing, Img, OffthreadVideo, Sequence, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 import { ThemeCtx, getTheme, useTheme } from '../theme';
 import { F } from '../fonts';
 import { SceneBody } from '../scenes';
@@ -8,6 +8,7 @@ import { Ambient, Burst, EmojiPops, EndCard, HookIntro, ReelProgress, Ripples, S
 import { prepare, type PScene, type PCaption, type Seg } from '../timeline';
 import { MusicLayer, SfxLayer } from '../common';
 import { KText, WordCaption } from '../ktext';
+import { emoji3dSrc } from '../emoji3d';
 
 /**
  * "Clean": the editorial explainer look.
@@ -110,6 +111,37 @@ const SceneShell: React.FC<{ scene: PScene; dur: number; hasTitle: boolean }> = 
       <SceneBody type={type} g={g} anim={scene.animation || 'pop_in'} frame={frame} fps={fps} dur={dur} />
     </div>
   );
+};
+
+/* ---------- art fill: when a scene has no graphic of its own, a floating picture keeps the top of the screen alive ---------- */
+const ArtFill: React.FC<{ src?: string; emoji?: string; dur: number }> = ({ src, emoji, dur }) => {
+  const T = useTheme();
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const p = spring({ frame, fps, config: { damping: 14, stiffness: 110, mass: 0.9 } });
+  const out = interpolate(dur - frame, [0, 6], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const fl = Math.sin(frame / 22) * 9;
+  const tilt = Math.sin(frame / 40) * 4;
+  const em = emoji ? emoji3dSrc(emoji) : '';
+  const W = src ? 340 : 280;
+  return (
+    <div style={{ position: 'absolute', left: 0, right: 0, top: BODY.top + 8, height: BODY.h - 20, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: clamp01(p * 1.4) * out }}>
+      <div style={{ position: 'absolute', width: 380, height: 380, borderRadius: '50%', border: '2px solid ' + T.accent, opacity: 0.35, transform: 'scale(' + (0.9 + 0.1 * Math.sin(frame / 30)) + ')' }} />
+      <div style={{ position: 'absolute', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, ' + T.accent + '55, rgba(255,255,255,0) 70%)' }} />
+      {src ? (
+        <div style={{ width: W, height: W * 1.1, borderRadius: 34, overflow: 'hidden', boxShadow: '0 30px 60px rgba(30,30,40,0.28), 0 0 0 6px rgba(255,255,255,0.8)', transform: 'translateY(' + (fl + (1 - p) * 40) + 'px) rotate(' + tilt + 'deg) scale(' + (0.85 + 0.15 * p + frame * 0.0006) + ')' }}>
+          <Img src={src} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scale(' + (1.04 + frame * 0.0012) + ')' }} />
+        </div>
+      ) : em ? (
+        <Img src={em} style={{ width: W, height: W, objectFit: 'contain', filter: 'drop-shadow(0 26px 30px rgba(0,0,0,0.25))', transform: 'translateY(' + (fl + (1 - p) * 40) + 'px) rotate(' + tilt * 2 + 'deg) scale(' + (0.7 + 0.3 * p) + ')' }} />
+      ) : null}
+    </div>
+  );
+};
+
+const imagesOf = (s: PScene): string[] => {
+  const g = (s.graphic || {}) as any;
+  return [g.image, ...(Array.isArray(g.images) ? g.images : [])].filter((x) => typeof x === 'string' && x);
 };
 
 /* ---------- speaker card ---------- */
@@ -245,13 +277,12 @@ const FullGraphic: React.FC<{ scene: PScene; dur: number; captions: PCaption[]; 
   const frame = Math.max(0, raw - hold);
   const inP = interpolate(frame, [0, 9], [0, 1], { extrapolateRight: 'clamp', easing: EASE });
   const outP = interpolate(dur - raw, [0, 8], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const o = Math.min(inP, outP);
   const dock = spring({ frame: frame - 3, fps, config: { damping: 16, stiffness: 120, mass: 0.8 } });
   const g: any = { ...((scene.graphic || {}) as any) };
   return (
-    <div style={{ position: 'absolute', inset: 0, background: T.bg, opacity: o }}>
+    <div style={{ position: 'absolute', inset: 0, background: T.bg, opacity: outP }}>
       <Ambient />
-      <div style={{ position: 'absolute', left: 40, right: 40, top: 130, height: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'scale(' + (1.1 + 0.05 * (1 - inP) + frame * 0.0005) + ')' }}>
+      <div style={{ position: 'absolute', left: 40, right: 40, top: 130, height: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: inP, transform: 'scale(' + (1.1 + 0.05 * (1 - inP) + frame * 0.0005) + ')' }}>
         <SceneBody type={scene.scene_type} g={g} anim={scene.animation || 'pop_in'} frame={frame} fps={fps} dur={dur} />
       </div>
       <div style={{ position: 'absolute', left: CARD.x, top: 850, width: CARD.w, height: 214, borderRadius: 30, background: 'linear-gradient(160deg, rgba(36,36,44,0.97), rgba(20,20,26,0.97))', boxShadow: '0 30px 64px rgba(20,20,30,0.30)', overflow: 'hidden', opacity: clamp01(dock * 1.6), transform: 'translateY(' + (1 - dock) * 40 + 'px)' }}>
@@ -269,6 +300,7 @@ export const Clean: React.FC<CleanProps> = ({ plan, videoUrl, audioUrl, cutoutUr
   const prep = useMemo(() => prepare(voice ? { ...plan, cuts: [], duration: plan.duration || Math.max(1, ...plan.captions.map((c) => c.end), ...plan.scenes.map((s) => s.end)) } : plan, fps), [plan, fps, voice]);
   const theme = useMemo(() => getTheme('sunny', plan.style?.accent), [plan]);
   const chapters = useMemo(() => chaptersOf(prep.scenes), [prep]);
+  const pool = useMemo(() => prep.scenes.flatMap(imagesOf), [prep]);
   const zoom = Math.max(0.7, Math.min(1.5, Number(plan.style?.zoom) || 1));
   const handle = String(plan.brand?.logoText ?? '').trim();
   const showHandle = handle && handle.toLowerCase() !== 'studio';
@@ -294,6 +326,16 @@ export const Clean: React.FC<CleanProps> = ({ plan, videoUrl, audioUrl, cutoutUr
           const to = i === prep.scenes.length - 1 ? prep.tl.totalFrames : Math.round(s.end * fps);
           const dur = Math.max(1, to - from);
           return <Sequence key={s.id + '-' + i} from={from} durationInFrames={dur}><SceneShell scene={s} dur={dur} hasTitle={!!titleOf(s)} /></Sequence>;
+        })}
+        {prep.scenes.map((s, i) => {
+          const bodyless = s.scene_type === 'title_pill' || s.scene_type === 'lower_third' || (!voice && s.scene_type === 'speaker_only');
+          if (!bodyless) return null;
+          const from = Math.round(s.start * fps);
+          const to = i === prep.scenes.length - 1 ? prep.tl.totalFrames : Math.round(s.end * fps);
+          const mid = (s.start + s.end) / 2;
+          const emoji = (plan.pops ?? []).reduce((best: any, q) => (!best || Math.abs(q.t - mid) < Math.abs(best.t - mid) ? q : best), null)?.emoji || '✨';
+          const src = pool.length ? pool[i % pool.length] : undefined;
+          return <Sequence key={'art' + i} from={from} durationInFrames={Math.max(1, to - from)}><ArtFill src={src} emoji={emoji} dur={Math.max(1, to - from)} /></Sequence>;
         })}
         {voice ? prep.scenes.map((s, i) => {
           if (s.scene_type !== 'speaker_only') return null;

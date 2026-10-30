@@ -2,8 +2,10 @@ import React from 'react';
 import { interpolate, spring } from 'remotion';
 import { loadFont } from '@remotion/google-fonts/Inter';
 import { useTheme } from './theme';
+import { F } from './fonts';
 
-export const FONT = loadFont('normal', { weights: ['500', '700', '800'], subsets: ['latin'] }).fontFamily;
+// Hindi text needs the Devanagari font too, otherwise it turns into black boxes
+export const FONT = loadFont('normal', { weights: ['500', '700', '800'], subsets: ['latin'] }).fontFamily + ', ' + F.deva + ', sans-serif';
 
 export const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 export const lerp = (f: number, a: number, b: number, from: number, to: number) =>

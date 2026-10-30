@@ -41,6 +41,7 @@ export const HookIntro: React.FC<{ text: string }> = ({ text }) => {
   const blur = 18 * outP;
   return (
     <div style={{ position: 'absolute', inset: 0, opacity: outP, backdropFilter: 'blur(' + blur + 'px)', WebkitBackdropFilter: 'blur(' + blur + 'px)', background: T.dark ? 'rgba(5,5,12,0.55)' : 'rgba(255,255,255,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 54px' }}>
+      <div style={{ position: 'absolute', left: '50%', top: '50%', width: 1500, height: 1500, marginLeft: -750, marginTop: -750, borderRadius: '50%', background: 'repeating-conic-gradient(from 0deg, ' + T.accent + '2e 0deg 8deg, rgba(255,255,255,0) 8deg 22deg)', transform: 'rotate(' + frame * 0.9 + 'deg)', WebkitMaskImage: 'radial-gradient(circle, #000 0%, transparent 60%)', maskImage: 'radial-gradient(circle, #000 0%, transparent 60%)' }} />
       <div style={{ textAlign: 'center', transform: 'scale(' + (0.8 + 0.2 * inP) + ') translateY(' + (1 - inP) * 40 + 'px)' }}>
         <KText text={text} size={text.length > 28 ? 80 : 100} weight={800} delay={3} step={4} />
         <div style={{ height: 14, width: clamp01((frame - 8) / 16) * 70 + '%', margin: '22px auto 0', borderRadius: 10, background: T.accent, boxShadow: '0 0 28px ' + T.accent }} />

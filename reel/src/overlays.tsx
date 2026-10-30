@@ -84,3 +84,40 @@ export const SceneWipe: React.FC<{ starts: number[] }> = ({ starts }) => {
     </div>
   );
 };
+
+/** Soft glass orbs and sparkles that drift behind everything, so the page never feels static. */
+export const Ambient: React.FC = () => {
+  const T = useTheme();
+  const frame = useCurrentFrame();
+  const orbs = [
+    { x: 40, y: 250, r: 64, a: '#C4B5FD', b: '#7C3AED', s: 1 },
+    { x: 590, y: 170, r: 44, a: '#FDBA74', b: '#FB7185', s: 1.3 },
+    { x: 610, y: 1000, r: 84, a: '#FCD34D', b: '#FB923C', s: 0.8 },
+    { x: 20, y: 1080, r: 52, a: '#A5F3FC', b: '#38BDF8', s: 1.1 },
+    { x: 330, y: 80, r: 26, a: '#FBCFE8', b: '#EC4899', s: 1.6 },
+  ];
+  return (
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+      {orbs.map((q, i) => (
+        <div key={i} style={{ position: 'absolute', left: q.x + Math.sin(frame / (46 / q.s) + i * 1.3) * 22, top: q.y + Math.cos(frame / (58 / q.s) + i) * 26, width: q.r * 2, height: q.r * 2, borderRadius: '50%', background: 'radial-gradient(circle at 30% 26%, ' + q.a + ', ' + q.b + ' 72%)', opacity: T.dark ? 0.5 : 0.42, boxShadow: '0 18px 40px ' + q.b + '44, inset 0 -8px 18px rgba(0,0,0,0.12)' }} />
+      ))}
+      {Array.from({ length: 16 }).map((_, i) => {
+        const tw = 0.5 + 0.5 * Math.sin(frame / 12 + i * 1.9);
+        const sz = 5 + (i % 3) * 3;
+        return <div key={'s' + i} style={{ position: 'absolute', left: (i * 157 + 40) % 700, top: (i * 281 + 90) % 1200 - ((frame * (0.25 + (i % 4) * 0.1)) % 60), width: sz, height: sz, borderRadius: '50%', background: T.accent, opacity: tw * 0.55, boxShadow: '0 0 ' + sz * 2 + 'px ' + T.accent }} />;
+      })}
+    </div>
+  );
+};
+
+/** A thin progress line across the top: it makes the reel feel finished and keeps people watching. */
+export const ReelProgress: React.FC<{ totalFrames: number }> = ({ totalFrames }) => {
+  const T = useTheme();
+  const frame = useCurrentFrame();
+  const w = clamp01(frame / Math.max(1, totalFrames - 1)) * 100;
+  return (
+    <div style={{ position: 'absolute', left: 0, top: 0, right: 0, height: 8, background: 'rgba(120,120,130,0.16)' }}>
+      <div style={{ width: w + '%', height: '100%', background: T.accent, borderRadius: 8, boxShadow: '0 0 14px ' + T.accent }} />
+    </div>
+  );
+};

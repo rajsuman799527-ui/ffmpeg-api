@@ -4,7 +4,7 @@ import { ThemeCtx, getTheme, useTheme } from '../theme';
 import { F } from '../fonts';
 import { SceneBody } from '../scenes';
 import { GLASS_TYPES } from '../glass';
-import { Ambient, EmojiPops, EndCard, HookIntro, ReelProgress, SceneWipe } from '../overlays';
+import { Ambient, Burst, EmojiPops, EndCard, HookIntro, ReelProgress, Ripples, SceneWipe, Streaks, WaveBars } from '../overlays';
 import { prepare, type PScene, type PCaption, type Seg } from '../timeline';
 import { MusicLayer, SfxLayer } from '../common';
 import { KText, WordCaption } from '../ktext';
@@ -164,6 +164,7 @@ const VoicePanel: React.FC<{ captions: PCaption[] }> = ({ captions }) => {
     <div style={{ position: 'absolute', left: CARD.x, top: 690, width: CARD.w, height: 400, borderRadius: 30, background: 'linear-gradient(160deg, rgba(36,36,44,0.97), rgba(20,20,26,0.97))', boxShadow: '0 30px 64px rgba(20,20,30,0.30)', overflow: 'hidden', opacity: clamp01(enter * 1.6) * vis, transform: 'translateY(' + ((1 - enter) * 40 + (1 - vis) * 24) + 'px)' }}>
       <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 6, background: T.accent }} />
       <CleanCaption captions={captions} card big />
+      <WaveBars />
     </div>
   );
 };
@@ -229,6 +230,7 @@ const FullGraphic: React.FC<{ scene: PScene; dur: number; captions: PCaption[]; 
       <div style={{ position: 'absolute', left: CARD.x, top: 850, width: CARD.w, height: 214, borderRadius: 30, background: 'linear-gradient(160deg, rgba(36,36,44,0.97), rgba(20,20,26,0.97))', boxShadow: '0 30px 64px rgba(20,20,30,0.30)', overflow: 'hidden', opacity: clamp01(dock * 1.6), transform: 'translateY(' + (1 - dock) * 40 + 'px)' }}>
         <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 6, background: T.accent }} />
         <CleanCaption captions={captions} offset={from} card big />
+        <WaveBars />
       </div>
     </div>
   );
@@ -243,10 +245,17 @@ export const Clean: React.FC<CleanProps> = ({ plan, videoUrl, audioUrl, cutoutUr
   const zoom = Math.max(0.7, Math.min(1.5, Number(plan.style?.zoom) || 1));
   const handle = String(plan.brand?.logoText ?? '').trim();
   const showHandle = handle && handle.toLowerCase() !== 'studio';
+  const frameNow = useCurrentFrame();
+  const starts = prep.scenes.slice(1).map((s) => Math.round(s.start * fps));
+  const lastStart = starts.filter((f) => f <= frameNow).pop();
+  const pl = lastStart === undefined ? 99 : frameNow - lastStart;
+  const punch = pl < 12 ? 0.04 * Math.pow(1 - pl / 12, 2) : 0;
+  const bursts = prep.captions.filter((c) => typeof c.emphasis === 'number' && c.emphasis >= 0 && c.words && c.words[c.emphasis]).map((c) => Math.round((c.words as any)[c.emphasis as number].s * fps));
   return (
     <ThemeCtx.Provider value={theme}>
-      <AbsoluteFill style={{ fontFamily: SANS, background: theme.bg }}>
+      <AbsoluteFill style={{ fontFamily: SANS, background: theme.bg, transform: 'scale(' + (1 + punch) + ')' }}>
         <Backdrop />
+        <Streaks />
         <Ambient />
         {chapters.map((c, i) => {
           const from = Math.round(c.start * fps);
@@ -275,6 +284,8 @@ export const Clean: React.FC<CleanProps> = ({ plan, videoUrl, audioUrl, cutoutUr
           const to = i === prep.scenes.length - 1 ? prep.tl.totalFrames : Math.round(s.end * fps);
           return <Sequence key={'fg' + i} from={from} durationInFrames={Math.max(1, to - from)}><FullGraphic scene={s} dur={Math.max(1, to - from)} captions={prep.captions} from={from} hold={plan.hook ? Math.max(0, 58 - from) : 0} /></Sequence>;
         })}
+        <Ripples starts={starts} />
+        <Burst at={bursts} y={voice ? 890 : 930} />
         <SceneWipe starts={prep.scenes.slice(1).map((s) => Math.round(s.start * fps))} />
         <ReelProgress totalFrames={prep.tl.totalFrames} />
         <EmojiPops pops={(plan.pops ?? []).map((q) => ({ f: Math.round(prep.tl.mapT(q.t) * fps), emoji: q.emoji }))} />

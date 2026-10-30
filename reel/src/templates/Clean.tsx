@@ -272,7 +272,7 @@ const KeywordHero: React.FC<{ captions: PCaption[]; from: number; dur: number }>
 };
 
 /** A glass graphic takes the whole screen: the speaker card steps aside, the picture stays big and readable. */
-const FullGraphic: React.FC<{ scene: PScene; dur: number; captions: PCaption[]; from: number; hold: number }> = ({ scene, dur, captions, from, hold }) => {
+const FullGraphic: React.FC<{ scene: PScene; dur: number; captions: PCaption[]; from: number; hold: number; video?: boolean }> = ({ scene, dur, captions, from, hold, video }) => {
   const raw = useCurrentFrame();
   const { fps } = useVideoConfig();
   const T = useTheme();
@@ -282,6 +282,15 @@ const FullGraphic: React.FC<{ scene: PScene; dur: number; captions: PCaption[]; 
   const outP = interpolate(dur - raw, [0, 8], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const dock = spring({ frame: frame - 3, fps, config: { damping: 16, stiffness: 120, mass: 0.8 } });
   const g: any = { ...((scene.graphic || {}) as any) };
+  if (video) {
+    return (
+      <div style={{ position: 'absolute', inset: 0, opacity: outP }}>
+        <div style={{ position: 'absolute', left: 30, right: 30, top: 120, height: 490, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: inP, transform: 'scale(' + (0.8 + 0.04 * inP) + ')' }}>
+          <SceneBody type={scene.scene_type} g={g} anim={scene.animation || 'pop_in'} frame={frame} fps={fps} dur={dur} />
+        </div>
+      </div>
+    );
+  }
   return (
     <div style={{ position: 'absolute', inset: 0, background: T.bg, opacity: outP }}>
       <Ambient />
@@ -361,7 +370,7 @@ export const Clean: React.FC<CleanProps> = ({ plan, videoUrl, audioUrl, cutoutUr
           if (!GLASS_TYPES.includes(s.scene_type)) return null;
           const from = Math.round(s.start * fps);
           const to = i === prep.scenes.length - 1 ? prep.tl.totalFrames : Math.round(s.end * fps);
-          return <Sequence key={'fg' + i} from={from} durationInFrames={Math.max(1, to - from)}><FullGraphic scene={s} dur={Math.max(1, to - from)} captions={prep.captions} from={from} hold={plan.hook ? Math.max(0, 58 - from) : 0} /></Sequence>;
+          return <Sequence key={'fg' + i} from={from} durationInFrames={Math.max(1, to - from)}><FullGraphic scene={s} dur={Math.max(1, to - from)} captions={prep.captions} from={from} hold={plan.hook ? Math.max(0, 58 - from) : 0} video={!voice} /></Sequence>;
         })}
         <Ripples starts={starts} />
         <Burst at={bursts} y={voice ? 890 : 930} />

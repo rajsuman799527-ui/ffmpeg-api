@@ -121,3 +121,74 @@ export const ReelProgress: React.FC<{ totalFrames: number }> = ({ totalFrames })
     </div>
   );
 };
+
+/** Slow diagonal light bands that glide across the page. */
+export const Streaks: React.FC = () => {
+  const T = useTheme();
+  const frame = useCurrentFrame();
+  return (
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+      {[0, 1, 2].map((i) => {
+        const x = ((frame * (0.7 + i * 0.25) + i * 330) % 1100) - 240;
+        return <div key={i} style={{ position: 'absolute', top: -200, bottom: -200, left: x, width: 150 + i * 60, transform: 'rotate(-18deg)', background: 'linear-gradient(90deg, rgba(255,255,255,0), ' + (T.dark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.75)') + ', rgba(255,255,255,0))', opacity: 0.8 }} />;
+      })}
+    </div>
+  );
+};
+
+/** Two soft rings that spread out from the middle each time a new idea starts. */
+export const Ripples: React.FC<{ starts: number[] }> = ({ starts }) => {
+  const T = useTheme();
+  const frame = useCurrentFrame();
+  const s = starts.find((f) => frame >= f && frame < f + 30);
+  if (s === undefined) return null;
+  const k = (frame - s) / 30;
+  return (
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+      {[0, 0.22].map((d, i) => {
+        const kk = Math.max(0, k - d) / (1 - d);
+        const size = 140 + kk * 980;
+        return <div key={i} style={{ position: 'absolute', left: 360 - size / 2, top: 480 - size / 2, width: size, height: size, borderRadius: '50%', border: (4 - i * 1.5) + 'px solid ' + T.accent, opacity: (1 - kk) * 0.45 * (k > d ? 1 : 0) }} />;
+      })}
+    </div>
+  );
+};
+
+/** A small sparkle burst on the key word of a caption. */
+export const Burst: React.FC<{ at: number[]; y: number }> = ({ at, y }) => {
+  const T = useTheme();
+  const frame = useCurrentFrame();
+  return (
+    <>
+      {at.map((a, n) => {
+        const l = frame - a;
+        if (l < 0 || l > 28) return null;
+        const k = l / 28;
+        return (
+          <div key={n} style={{ position: 'absolute', left: 360, top: y, pointerEvents: 'none' }}>
+            {Array.from({ length: 16 }).map((_, i) => {
+              const ang = (i / 16) * Math.PI * 2 + (a % 7);
+              const dist = (30 + l * 6.5) * (0.65 + (i % 3) * 0.3);
+              const sz = (i % 2 ? 9 : 6) * (1 - k * 0.8);
+              return <div key={i} style={{ position: 'absolute', left: Math.cos(ang) * dist - sz / 2, top: Math.sin(ang) * dist * 0.7 - sz / 2, width: sz, height: sz, borderRadius: i % 3 === 0 ? 2 : '50%', background: i % 2 ? T.accent : '#fff', opacity: 1 - k, boxShadow: '0 0 10px ' + T.accent, transform: 'rotate(' + l * 12 + 'deg)' }} />;
+            })}
+          </div>
+        );
+      })}
+    </>
+  );
+};
+
+/** Little sound-wave bars for the corner of the caption panel. */
+export const WaveBars: React.FC = () => {
+  const T = useTheme();
+  const frame = useCurrentFrame();
+  return (
+    <div style={{ position: 'absolute', right: 26, top: 20, display: 'flex', alignItems: 'center', gap: 4, height: 26 }}>
+      {Array.from({ length: 6 }).map((_, i) => {
+        const h = 5 + 21 * Math.abs(Math.sin(frame / 5 + i * 1.3) * Math.cos(frame / 11 + i * 0.6));
+        return <div key={i} style={{ width: 4, height: h, borderRadius: 4, background: T.accent, opacity: 0.9 }} />;
+      })}
+    </div>
+  );
+};

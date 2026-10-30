@@ -61,6 +61,7 @@ export const WordCaption: React.FC<{ cap: PCaption; size: number; color?: string
     <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', columnGap: Math.round(size * 0.24), rowGap: 2, fontFamily, fontWeight: 600, fontSize: size, lineHeight: 1.2, color, textShadow: '0 2px 12px rgba(0,0,0,0.45)' }}>
       {words.map((w, i) => {
         const f = frame - Math.round(w.s * fps) + 2;
+        if (f < -3) return null;
         const p = spring({ frame: f, fps, config: { damping: 12, stiffness: 220, mass: 0.5 } });
         const o = interpolate(f, [-2, 3], [0, 1], CL);
         const on = i === emph;

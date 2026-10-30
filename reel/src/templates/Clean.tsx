@@ -4,7 +4,7 @@ import { ThemeCtx, getTheme, useTheme } from '../theme';
 import { F } from '../fonts';
 import { SceneBody } from '../scenes';
 import { GLASS_TYPES } from '../glass';
-import { EmojiPops, EndCard, HookIntro } from '../overlays';
+import { Ambient, EmojiPops, EndCard, HookIntro, ReelProgress, SceneWipe } from '../overlays';
 import { prepare, type PScene, type PCaption, type Seg } from '../timeline';
 import { MusicLayer, SfxLayer } from '../common';
 import { KText, WordCaption } from '../ktext';
@@ -206,20 +206,27 @@ const CleanSpeaker: React.FC<{ videoUrl: string; cutoutUrl?: string; segs: Seg[]
 };
 
 /** A glass graphic takes the whole screen: the speaker card steps aside, the picture stays big and readable. */
-const FullGraphic: React.FC<{ scene: PScene; dur: number; captions: PCaption[]; from: number }> = ({ scene, dur, captions, from }) => {
-  const frame = useCurrentFrame();
+const FullGraphic: React.FC<{ scene: PScene; dur: number; captions: PCaption[]; from: number; hold: number }> = ({ scene, dur, captions, from, hold }) => {
+  const raw = useCurrentFrame();
   const { fps } = useVideoConfig();
   const T = useTheme();
-  const inP = interpolate(frame, [0, 8], [0, 1], { extrapolateRight: 'clamp', easing: EASE });
-  const outP = interpolate(dur - frame, [0, 8], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  if (hold >= dur - 6) return null;
+  const frame = Math.max(0, raw - hold);
+  const inP = interpolate(frame, [0, 9], [0, 1], { extrapolateRight: 'clamp', easing: EASE });
+  const outP = interpolate(dur - raw, [0, 8], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const o = Math.min(inP, outP);
+  const dock = spring({ frame: frame - 3, fps, config: { damping: 16, stiffness: 120, mass: 0.8 } });
   const g: any = { ...((scene.graphic || {}) as any) };
   return (
     <div style={{ position: 'absolute', inset: 0, background: T.bg, opacity: o }}>
-      <div style={{ position: 'absolute', left: 40, right: 40, top: 150, height: 760, display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'scale(' + (1.12 + 0.03 * (1 - inP)) + ')' }}>
+      <Ambient />
+      <div style={{ position: 'absolute', left: 40, right: 40, top: 130, height: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'scale(' + (1.1 + 0.05 * (1 - inP) + frame * 0.0005) + ')' }}>
         <SceneBody type={scene.scene_type} g={g} anim={scene.animation || 'pop_in'} frame={frame} fps={fps} dur={dur} />
       </div>
-      <div style={{ position: 'absolute', left: 48, top: 880, width: 624, height: 150, borderRadius: 28, background: 'rgba(30,30,36,0.94)', boxShadow: '0 24px 50px rgba(20,20,30,0.28)', overflow: 'hidden' }}><CleanCaption captions={captions} offset={from} card /></div>
+      <div style={{ position: 'absolute', left: CARD.x, top: 850, width: CARD.w, height: 214, borderRadius: 30, background: 'linear-gradient(160deg, rgba(36,36,44,0.97), rgba(20,20,26,0.97))', boxShadow: '0 30px 64px rgba(20,20,30,0.30)', overflow: 'hidden', opacity: clamp01(dock * 1.6), transform: 'translateY(' + (1 - dock) * 40 + 'px)' }}>
+        <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 6, background: T.accent }} />
+        <CleanCaption captions={captions} offset={from} card big />
+      </div>
     </div>
   );
 };
@@ -237,6 +244,7 @@ export const Clean: React.FC<CleanProps> = ({ plan, videoUrl, audioUrl, cutoutUr
     <ThemeCtx.Provider value={theme}>
       <AbsoluteFill style={{ fontFamily: SANS, background: theme.bg }}>
         <Backdrop />
+        <Ambient />
         {chapters.map((c, i) => {
           const from = Math.round(c.start * fps);
           const to = Math.round(c.end * fps);
@@ -262,8 +270,10 @@ export const Clean: React.FC<CleanProps> = ({ plan, videoUrl, audioUrl, cutoutUr
           if (!GLASS_TYPES.includes(s.scene_type)) return null;
           const from = Math.round(s.start * fps);
           const to = i === prep.scenes.length - 1 ? prep.tl.totalFrames : Math.round(s.end * fps);
-          return <Sequence key={'fg' + i} from={from} durationInFrames={Math.max(1, to - from)}><FullGraphic scene={s} dur={Math.max(1, to - from)} captions={prep.captions} from={from} /></Sequence>;
+          return <Sequence key={'fg' + i} from={from} durationInFrames={Math.max(1, to - from)}><FullGraphic scene={s} dur={Math.max(1, to - from)} captions={prep.captions} from={from} hold={plan.hook ? Math.max(0, 58 - from) : 0} /></Sequence>;
         })}
+        <SceneWipe starts={prep.scenes.slice(1).map((s) => Math.round(s.start * fps))} />
+        <ReelProgress totalFrames={prep.tl.totalFrames} />
         <EmojiPops pops={(plan.pops ?? []).map((q) => ({ f: Math.round(prep.tl.mapT(q.t) * fps), emoji: q.emoji }))} />
         {plan.hook ? <HookIntro text={plan.hook} /> : null}
         <EndCard text={plan.cta ?? ''} brand={plan.brand?.logoText ?? ''} totalFrames={prep.tl.totalFrames} />

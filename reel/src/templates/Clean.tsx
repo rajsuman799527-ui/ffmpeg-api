@@ -152,14 +152,16 @@ const CleanCaption: React.FC<{ captions: PCaption[]; offset?: number; card?: boo
 };
 
 /** Voice-only reels have no speaker, so there is no box: big captions on a dark panel, with the graphics above. */
-const VoicePanel: React.FC<{ captions: PCaption[] }> = ({ captions }) => {
+const VoicePanel: React.FC<{ captions: PCaption[]; glass: { from: number; to: number }[]; hook: boolean }> = ({ captions, glass, hook }) => {
   const T = useTheme();
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const enter = spring({ frame, fps, config: { damping: 18, stiffness: 110, mass: 0.9 } });
   const tt = frame / fps;
   const gap = Math.min(99, ...captions.map((c) => (tt < c.start ? c.start - tt : tt > c.end ? tt - c.end : 0)));
-  const vis = clamp01(1 - gap / 0.4);
+  let vis = clamp01(1 - gap / 0.4);
+  for (const r of glass) { const d = frame < r.from ? r.from - frame : frame > r.to ? frame - r.to : -1; vis *= d < 0 ? 0 : clamp01(d / 8); }
+  if (hook) vis *= clamp01((frame - 56) / 8);
   return (
     <div style={{ position: 'absolute', left: CARD.x, top: 690, width: CARD.w, height: 400, borderRadius: 30, background: 'linear-gradient(160deg, rgba(36,36,44,0.97), rgba(20,20,26,0.97))', boxShadow: '0 30px 64px rgba(20,20,30,0.30)', overflow: 'hidden', opacity: clamp01(enter * 1.6) * vis, transform: 'translateY(' + ((1 - enter) * 40 + (1 - vis) * 24) + 'px)' }}>
       <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 6, background: T.accent }} />
@@ -206,6 +208,31 @@ const CleanSpeaker: React.FC<{ videoUrl: string; cutoutUrl?: string; segs: Seg[]
         <CleanCaption captions={captions} />
       </div>
     </>
+  );
+};
+
+/** Voice reels have no speaker, so the top of the screen shows the key word of what is being said, big and moving. */
+const KeywordHero: React.FC<{ captions: PCaption[]; from: number; dur: number }> = ({ captions, from, dur }) => {
+  const T = useTheme();
+  const raw = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const t = (raw + from) / fps;
+  const cap = captions.find((c) => t >= c.start && t < c.end + 0.1);
+  if (!cap) return null;
+  const words = cap.text.split(/\s+/).filter(Boolean);
+  if (!words.length) return null;
+  const ei = typeof cap.emphasis === 'number' && cap.emphasis >= 0 && cap.emphasis < words.length ? cap.emphasis : words.reduce((b, w, i) => (w.length > words[b].length ? i : b), 0);
+  const word = words[ei].replace(/[.,!?;:]+$/g, '');
+  const l = raw + from - Math.round(cap.start * fps);
+  const p = spring({ frame: l, fps, config: { damping: 11, stiffness: 140, mass: 0.7 } });
+  const lim = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as const;
+  const out = interpolate(t, [cap.end - 0.08, cap.end + 0.1], [1, 0], lim) * interpolate(dur - raw, [0, 8], [0, 1], lim);
+  const size = word.length > 9 ? 108 : word.length > 6 ? 138 : 176;
+  return (
+    <div style={{ position: 'absolute', left: 0, right: 0, top: 230, height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: clamp01(p * 1.5) * out, transform: 'translateY(' + Math.sin(raw / 20) * 8 + 'px) scale(' + (0.7 + 0.3 * p) + ') rotate(' + (1 - p) * -6 + 'deg)' }}>
+      <div style={{ position: 'absolute', width: 420, height: 420, borderRadius: '50%', background: 'radial-gradient(circle, ' + T.accent + '44, rgba(255,255,255,0) 68%)' }} />
+      <div style={{ position: 'relative', fontFamily: SANS, fontWeight: 900, fontSize: size, letterSpacing: '-0.03em', lineHeight: 1, backgroundImage: 'linear-gradient(120deg, ' + T.ink + ' 20%, ' + T.accent + ' 90%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', WebkitTextFillColor: 'transparent', filter: 'drop-shadow(0 14px 26px ' + T.accent + '44)' }}>{word}</div>
+    </div>
   );
 };
 
@@ -268,13 +295,20 @@ export const Clean: React.FC<CleanProps> = ({ plan, videoUrl, audioUrl, cutoutUr
           const dur = Math.max(1, to - from);
           return <Sequence key={s.id + '-' + i} from={from} durationInFrames={dur}><SceneShell scene={s} dur={dur} hasTitle={!!titleOf(s)} /></Sequence>;
         })}
+        {voice ? prep.scenes.map((s, i) => {
+          if (s.scene_type !== 'speaker_only') return null;
+          const from = Math.round(s.start * fps);
+          const to = i === prep.scenes.length - 1 ? prep.tl.totalFrames : Math.round(s.end * fps);
+          const dur = Math.max(1, to - from);
+          return <Sequence key={'kh' + i} from={from} durationInFrames={dur}><KeywordHero captions={prep.captions} from={from} dur={dur} /></Sequence>;
+        }) : null}
         {plan.sfx === false ? null : prep.scenes.slice(1).map((s, i) => (
           <Sequence key={'sw' + i} from={Math.max(0, Math.round(s.start * fps) - 3)} durationInFrames={30}><Audio src={staticFile('sfx/swish.wav')} volume={0.2} /></Sequence>
         ))}
         {voice ? (plan.tracks && plan.tracks.length
           ? plan.tracks.map((t, i) => <Sequence key={'tr' + i} from={Math.max(0, Math.round(t.start * fps))}><Audio src={t.url} /></Sequence>)
           : audioUrl ? <Audio src={audioUrl} /> : null) : null}
-        {voice ? <VoicePanel captions={prep.captions} /> : <CleanSpeaker videoUrl={videoUrl} cutoutUrl={cutoutUrl} segs={prep.tl.segs} captions={prep.captions} zoom={zoom} src={plan.src} />}
+        {voice ? <VoicePanel captions={prep.captions} hook={!!plan.hook} glass={prep.scenes.filter((s) => GLASS_TYPES.includes(s.scene_type)).map((s, _i, _a) => ({ from: Math.round(s.start * fps) - 4, to: Math.round(s.end * fps) + 2 }))} /> : <CleanSpeaker videoUrl={videoUrl} cutoutUrl={cutoutUrl} segs={prep.tl.segs} captions={prep.captions} zoom={zoom} src={plan.src} />}
         {showHandle ? <div style={{ position: 'absolute', left: 0, right: 0, top: (voice ? 690 + 400 : CARD.y + cardGeom(plan.src).h) + 28, textAlign: 'center', fontFamily: SANS, fontWeight: 600, fontSize: 24, color: '#9A9AA2', letterSpacing: 0.3 }}>{handle}</div> : null}
         {plan.sfx === false ? null : <SfxLayer plan={{ ...(plan as any), captions: prep.captions }} cfg={{ phrase: 'tick', emphasis: 'pop', vol: 0.2 }} />}
         {plan.music === null ? null : <MusicLayer track={plan.music?.track ?? 'warm'} volume={plan.music?.volume ?? (voice ? 0.14 : 0.1)} totalFrames={prep.tl.totalFrames} />}

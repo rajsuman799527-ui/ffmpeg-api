@@ -49,7 +49,7 @@ if (STILLS) {
 await renderMedia({
   composition, serveUrl, codec: 'h264',
   outputLocation: path.join(here, '..', 'out.mp4'),
-  inputProps, crf: 23, concurrency: 4, x264Preset: 'veryfast', jpegQuality: 88, timeoutInMilliseconds: 180000,
+  inputProps, crf: 17, concurrency: 4, x264Preset: 'fast', jpegQuality: 95, audioBitrate: '192k', pixelFormat: 'yuv420p', colorSpace: 'bt709', timeoutInMilliseconds: 180000,
   onProgress: ({ progress }) => { const p = Math.round(progress * 100); if (p % 10 === 0) console.log('progress', p); },
 });
 console.log('done');
